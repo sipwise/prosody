@@ -54,6 +54,7 @@ do -- process options to get a db connection
 end
 
 local function getsql(sql, ...)
+	module:log("debug", "getsql: %s", sql);
 	if params.driver == "PostgreSQL" then
 		sql = sql:gsub("`", "\"");
 	end
@@ -71,9 +72,22 @@ local function getsql(sql, ...)
 end
 
 local function get_password(username)
-	local stmt, err = getsql("SELECT `password` FROM `subscriber` WHERE `username`=? AND `domain`=?", username, module.host);
-	if stmt then
-		for row in stmt:rows(true) do
+	local numstmt, substmt, err;
+	module:log("debug", "get_password: checking dbaliases for username=%s", username);
+    numstmt, err = getsql("select s.username, s.domain, s.password from subscriber s, dbaliases a where a.alias_username = ? and s.username = a.username and s.domain = a.domain", username);
+    if numstmt then
+	    module:log("debug", "get_password: checking dbaliases stmt ok");
+		for row in numstmt:rows(true) do
+	        module:log("debug", "get_password: dbaliases mapped to %s@%s for alias %s", row.username, row.domain, row.password);
+			return row.password;
+		end
+    end
+	module:log("debug", "get_password: checking dbaliases stmt failed, checking subscriber");
+    substmt, err = getsql("SELECT `password` FROM `subscriber` WHERE `username`=? AND `domain`=?", username, module.host);
+    if substmt then
+	    module:log("debug", "get_password: checking subscriber stmt ok");
+	    for row in substmt:rows(true) do
+	        module:log("debug", "get_password: found subscriber %s@%s", username, module.host);
 			return row.password;
 		end
 	end
@@ -92,6 +106,7 @@ function provider.set_password(username, password)
 	return nil, "Setting password is not supported.";
 end
 function provider.user_exists(username)
+	module:log("debug", ">>>>>>>>>> mod_auth_sql:user_exists username=%s", username);
 	return get_password(username) and true;
 end
 function provider.create_user(username, password)
