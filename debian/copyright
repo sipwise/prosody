@@ -1,0 +1,19 @@
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ngcp-prosody
+Upstream-Contact: Sipwise GmbH <development@sipwise.com>
+Source: http://www.sipwise.com/
+
+Files: plugins/mod_auth_sql.lua
+Copyright: 2011 Tomasz Sterna <tomek@xiaoka.com>
+           2011 Waqas Hussain <waqas20@gmail.com>
+License: TODO
+
+Files: plugins/mod_sipwise_vcard_cusax.lua
+Copyright: 2008-2010 Matthew Wild
+           2008-2010 Waqas Hussain
+           2013 Sipwise GmbH
+License: MIT/X11
+
+Files: plugins/mod_sipwise_vhosts_sql.lua
+Copyright: 2013 Sipwise GmbH <development@sipwise.com>
+License: TODO
