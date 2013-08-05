@@ -10,6 +10,7 @@ Package: ngcp-prosody-modules
 Architecture: amd64
 Depends: lua-dbi-mysql,
          lua-dbi-common,
+         lua-sec,
          ${misc:Depends}, ${shlibs:Depends}
 Description: ngcp modules for the prosody Jabber/XMPP server
  This package provides modules for the Prosody Jabber/XMPP server
