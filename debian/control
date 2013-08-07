@@ -11,6 +11,7 @@ Architecture: amd64
 Depends: lua-dbi-mysql,
          lua-dbi-common,
          lua-sec,
+         lua-rex-pcre,
          ${misc:Depends}, ${shlibs:Depends}
 Description: ngcp modules for the prosody Jabber/XMPP server
  This package provides modules for the Prosody Jabber/XMPP server
@@ -24,3 +25,5 @@ Description: ngcp modules for the prosody Jabber/XMPP server
     for phone/video of the requested user
   * mod_sipwise_vhosts_sql.lua: load vhosts from DB on startup of
     Prosody XMPP server
+  * mod_sipwise_vjud.lua: implement Jabber Search with implicit number
+    normalization using the NGCP rewrite rules
