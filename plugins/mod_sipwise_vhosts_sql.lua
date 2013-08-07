@@ -80,6 +80,8 @@ local function load_vhosts_from_db()
 		for row in stmt:rows(true) do
 			module:log("debug", "load_vhosts_from_db: activate host %s", row.domain);
 			hostmanager.activate(row.domain, host_config);
+			module:log("debug", "load_vhosts_from_db: activate implicit search.%s", row.domain);
+			hostmanager.activate("search."..row.domain, { component_module = "sipwise_vjud" });
 		end
 	end
 end
