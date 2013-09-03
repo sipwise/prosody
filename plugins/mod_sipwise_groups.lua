@@ -28,7 +28,7 @@ domain_id = ( SELECT id FROM provisioning.voip_domains where domain = ?);
 local mod_sql = module:require("sql");
 local params = module:get_option("auth_sql", module:get_option("auth_sql"));
 
-engine = mod_sql:create_engine(params);
+local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
 function inject_roster_contacts(username, host, roster)
@@ -68,6 +68,12 @@ end
 
 function lookup_account_id(username, host)
 	module:log("debug", "lookup user '%s@%s'", username, host);
+	-- Reconnect to DB if necessary
+	if not engine.conn:ping() then
+		engine.conn = nil;
+		module:log("debug", "DDBB reconecting");
+		engine:connect();
+	end
 	for row in engine:select(account_id_query, username, host) do
 		module:log("debug", "user '%s@%s' belongs to %d", username, host, row[1]);
 		return row[1]
@@ -77,6 +83,12 @@ end
 
 function lookup_groups(account_id)
 	local groups = {};
+	-- Reconnect to DB if necessary
+	if not engine.conn:ping() then
+		engine.conn = nil;
+		module:log("debug", "DDBB reconecting");
+		engine:connect();
+	end
 	if account_id then
 		module:log("debug", "lookup_groups for account_id:%s", account_id);
 		for row in engine:select(lookup_query, account_id) do
