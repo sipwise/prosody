@@ -27,3 +27,4 @@ Description: ngcp modules for the prosody Jabber/XMPP server
     Prosody XMPP server
   * mod_sipwise_vjud.lua: implement Jabber Search with implicit number
     normalization using the NGCP rewrite rules
+  * mod_sipwise_groups.lua: inserts PBX groups to the user contact list
