@@ -12,6 +12,16 @@ AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
 
+local lookup_with_dn_query = [[
+SELECT s.username, d.domain, p.value
+FROM provisioning.voip_subscribers AS s
+LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
+LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
+WHERE account_id = ? AND s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL
+AND p.attribute_id = ?
+ORDER BY s.username;
+]];
+
 local lookup_user_group_query = [[
 SELECT g.name
 FROM provisioning.voip_subscribers AS s
@@ -50,10 +60,10 @@ WHERE username = ? AND
 domain_id = ( SELECT id FROM provisioning.voip_domains where domain = ?);
 ]]
 
-local buddylist_preference_id_query = [[
+local lookupt_preference_id_query = [[
 SELECT id
 FROM provisioning.voip_preferences
-WHERE attribute = 'shared_buddylist_visibility';
+WHERE attribute = ?;
 ]]
 
 -- from table to string
@@ -87,19 +97,34 @@ engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
 -- returns the attribute_id of 'shared_buddylist_visiblility' preference
 local function lookup_buddy_id()
-	for row in engine:select(buddylist_preference_id_query) do
+	local res, row;
+	res = engine:select(lookupt_preference_id_query,
+		'shared_buddylist_visibility');
+	for row in res do
 		return row[1]
 	end
 	module:log("error", "no 'shared_buddylist_visiblility' preference found!");
 end
-
 local buddylist_preference_id = lookup_buddy_id();
+
+-- returns the attribute_id of 'display_name' preference
+local function lookup_displayname_id()
+	local res, row;
+	res = engine:select(lookupt_preference_id_query,
+		'display_name');
+	for row in res do
+		return row[1]
+	end
+	module:log("error", "no 'display_name' preference found!");
+end
+local displayname_preference_id = lookup_displayname_id();
+
 
 -- "roster-load" callback
 function inject_roster_contacts(username, host, roster)
 	module:log("debug", "Injecting group members to roster");
 	local bare_jid = username.."@"..host;
-	local account_id, groups;
+	local account_id, groups, display_names;
 
 	-- Reconnect to DB if necessary
 	local function reconect_check()
@@ -112,6 +137,7 @@ function inject_roster_contacts(username, host, roster)
 
 	-- returns the account_id of username@host subscriber
 	local function lookup_account_id()
+		local row;
 		--module:log("debug", "lookup user '%s@%s'", username, host);
 		reconect_check();
 		for row in engine:select(account_id_query, username, host) do
@@ -125,7 +151,7 @@ function inject_roster_contacts(username, host, roster)
 	-- returns a table with the pbx groups the subscriber
 	-- belongs to
 	local function lookup_user_groups()
-		local res;
+		local res, row;
 		local result = {};
 		reconect_check();
 		res = engine:select(lookup_user_group_query, account_id,
@@ -133,6 +159,20 @@ function inject_roster_contacts(username, host, roster)
 		for row in res do
 			module:log("debug", "found group:'%s'",	row[1]);
 			table.insert(result, row[1]);
+		end
+		return result;
+	end
+
+	-- returns a table with the subscribers display_name
+	-- key is username@domain
+	local function lookup_users_dn()
+		local res, row;
+		local result = {};
+		reconect_check();
+		res = engine:select(lookup_with_dn_query, account_id,
+			displayname_preference_id);
+		for row in res do
+			result[row[1].."@"..row[2]] = row[3];
 		end
 		return result;
 	end
@@ -182,6 +222,7 @@ function inject_roster_contacts(username, host, roster)
 	account_id = lookup_account_id();
 	-- TODO: set this parameters from usr_preferences
 	groups = lookup_groups(true, true);
+	display_names = lookup_users_dn();
 
 	local function import_jids_to_roster(group_name)
 		local _, jid;
@@ -193,8 +234,8 @@ function inject_roster_contacts(username, host, roster)
 				if not roster[jid] then roster[jid] = {}; end
 				roster[jid].subscription = "both";
 				-- If we have the subscriber display name
-				if groups[group_name][jid] then
-					roster[jid].name = groups[group_name][jid];
+				if display_names[jid] then
+					roster[jid].name = display_names[jid];
 				end
 				if not roster[jid].groups then
 					roster[jid].groups = { [group_name] = true };
