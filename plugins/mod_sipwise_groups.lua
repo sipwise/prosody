@@ -6,7 +6,9 @@ SELECT g.name, s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_pbx_groups AS g ON s.pbx_group_id = g.id
+LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
 WHERE account_id = ? AND s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL
+AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
 
@@ -25,8 +27,9 @@ SELECT g.name, s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_pbx_groups AS g ON s.pbx_group_id = g.id
+LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
 WHERE account_id = ? AND s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL
-AND g.name in (?)
+AND (p.attribute_id = ? AND p.value = '1') AND g.name in (?)
 ORDER BY s.username;
 ]];
 
@@ -34,7 +37,9 @@ local lookup_all_query = [[
 SELECT s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
+LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
 WHERE account_id = ? AND s.is_pbx_group = 0
+AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
 
@@ -43,6 +48,12 @@ SELECT account_id
 FROM provisioning.voip_subscribers
 WHERE username = ? AND
 domain_id = ( SELECT id FROM provisioning.voip_domains where domain = ?);
+]]
+
+local buddylist_preference_id_query = [[
+SELECT id
+FROM provisioning.voip_preferences
+WHERE attribute = 'shared_buddylist_visibility';
 ]]
 
 -- from table to string
@@ -74,6 +85,16 @@ local params = module:get_option("auth_sql", module:get_option("auth_sql"));
 local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
+-- returns the attribute_id of 'shared_buddylist_visiblility' preference
+local function lookup_buddy_id()
+	for row in engine:select(buddylist_preference_id_query) do
+		return row[1]
+	end
+	module:log("error", "no 'shared_buddylist_visiblility' preference found!");
+end
+
+local buddylist_preference_id = lookup_buddy_id();
+
 -- "roster-load" callback
 function inject_roster_contacts(username, host, roster)
 	module:log("debug", "Injecting group members to roster");
@@ -96,7 +117,7 @@ function inject_roster_contacts(username, host, roster)
 		for row in engine:select(account_id_query, username, host) do
 			module:log("debug", "user '%s@%s' belongs to %d",
 				username, host, row[1]);
-			return row[1]
+			return row[1];
 		end
 		module:log("debug", "no account_id found!");
 	end
@@ -107,7 +128,8 @@ function inject_roster_contacts(username, host, roster)
 		local res;
 		local result = {};
 		reconect_check();
-		res = engine:select(lookup_user_group_query, account_id, username, host);
+		res = engine:select(lookup_user_group_query, account_id,
+			username, host, buddylist_preference_id);
 		for row in res do
 			module:log("debug", "found group:'%s'",	row[1]);
 			table.insert(result, row[1]);
@@ -129,17 +151,17 @@ function inject_roster_contacts(username, host, roster)
 			if all_groups then
 				module:log("debug", "lookup_groups for account_id:%s",
 					account_id);
-				res = engine:select(lookup_query, account_id);
+				res = engine:select(lookup_query, account_id, buddylist_preference_id);
 			else
 				module:log("debug", "lookup_groups for account_id:%s jid:%s@%s",
 					account_id, username, host);
 				user_groups = lookup_user_groups();
 				res =  engine:select(lookup_users_by_groups_query,
-					account_id, implode(",",user_groups));
+					account_id, buddylist_preference_id, implode(",",user_groups));
 			end
 			for row in res do
 				--module:log("debug", "found group:'%s' user:'%s' domain:'%s'",
-					row[1], row[2], row[3]);
+				--	row[1], row[2], row[3]);
 				if not result[row[1]] then
 					result[row[1]] = {};
 				end
@@ -148,7 +170,8 @@ function inject_roster_contacts(username, host, roster)
 			if all then
 				--module:log("debug", "lookup_all for account_id:%s", account_id);
 				result['all'] = {};
-				for row in engine:select(lookup_all_query, account_id) do
+				for row in engine:select(lookup_all_query,
+					account_id, buddylist_preference_id) do
 					table.insert(result['all'], row[1].."@"..row[2]);
 				end
 			end
