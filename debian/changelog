@@ -1,3 +1,12 @@
+ngcp-prosody-modules (1.1.0+0~mr3.2.1) unstable; urgency=low
+
+  [ Andreas Granig ]
+  * [68fb4e4] MT#5811 Add xmpp-over-websocket plugin.
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Sat, 01 Feb 2014 19:55:58 +0100
+
 ngcp-prosody-modules (1.1.0) unstable; urgency=low
 
   [ Victor Seva ]
