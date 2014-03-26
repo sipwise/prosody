@@ -1,5 +1,9 @@
 -- Load PBX groups from DDBB
 -- Copyright (C) 2013 Sipwise GmbH <development@sipwise.com>
+--
+-- This project is MIT/X11 licensed. Please see the
+-- COPYING file in the source package for more information.
+--
 
 local lookup_query = [[
 SELECT g.name, s.username, d.domain

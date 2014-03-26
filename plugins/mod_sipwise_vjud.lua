@@ -1,3 +1,9 @@
+--
+-- Copyright (C) 2013 Sipwise GmbH <development@sipwise.com>
+--
+-- This project is MIT/X11 licensed. Please see the
+-- COPYING file in the source package for more information.
+--
 local nodeprep = require "util.encodings".stringprep.nodeprep;
 local jid_split = require "util.jid".split;
 local sql = module:require("sql");

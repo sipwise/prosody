@@ -1,6 +1,9 @@
 -- Load vhosts from DB on startup of Prosody XMPP server.
 -- Copyright (C) 2013 Sipwise GmbH <development@sipwise.com>
 --
+-- This project is MIT/X11 licensed. Please see the
+-- COPYING file in the source package for more information.
+--
 
 module:set_global();
 
