@@ -11,6 +11,7 @@ Architecture: amd64
 Depends: lua-dbi-mysql,
          lua-dbi-common,
          lua-sec,
+         lua-redis,
          lua-rex-pcre,
          lua-bitop,
          ${misc:Depends}, ${shlibs:Depends}
@@ -30,3 +31,5 @@ Description: ngcp modules for the prosody Jabber/XMPP server
     normalization using the NGCP rewrite rules
   * mod_sipwise_groups.lua: inserts PBX groups to the user contact list
   * mod_websocket.lua: XMPP over websocket, (c) 2012 Florian Zeitz
+  * mod_sipwise_admin_telnet: admin_telnet with inteface selection
+  * mod_sipwise_redis_sessions: keep server's session info on redis
