@@ -6,7 +6,7 @@
 --
 
 module:set_global();
-require "util.table";
+local ut = require "util.table";
 local jid = require "util.jid";
 local array = require "util.array";
 local redis = require 'redis';
@@ -28,8 +28,8 @@ end
 
 local function client_connect()
 	redis_client = redis.connect(redis_config.host, redis_config.port);
-	module:log("debug", "connected to redis server %s:%d",
-	redis_config.host, redis_config.port);
+	--module:log("debug", "connected to redis server %s:%d",
+	--redis_config.host, redis_config.port);
 	if redis_config.redis_db then
 		redis_client:select(redis_config.redis_db);
 	end
@@ -46,7 +46,6 @@ local function resource_bind(event)
 	redis_client:set(full_jid, redis_config.server_id);
 	module:log("debug", "append [%s]=>%s:%s", bare_jid, redis_config.server_id, resource);
 	redis_client:sadd(bare_jid, redis_config.server_id..":"..resource);
-	module:log("debug", "done");
 end
 
 local function resource_unbind(event)
@@ -60,11 +59,10 @@ local function resource_unbind(event)
 	redis_client:del(full_jid);
 	module:log("debug", "remove [%s]=>%s:%s", bare_jid, redis_config.server_id, resource);
 	redis_client:srem(bare_jid, redis_config.server_id..":"..resource);
-	module:log("debug", "done");
 end
 
 local function split_key(key)
-	local t = explode(':', key);
+	local t = ut.string.explode(':', key);
 	return t[1], t[2];
 end
 
@@ -77,10 +75,10 @@ function redis_sessions.get_hosts(j)
 	module:log("debug", "search session:%s host", bare_jid);
 	if not test_connection() then client_connect() end
 	l = redis_client:smembers(bare_jid);
-	module:log("debug", "l:%s", table.tostring(l));
+	--module:log("debug", "l:%s", ut.table.tostring(l));
 	for _,v in pairs(l) do
 		h, r = split_key(v);
-		module:log("debug", "h:%s r:%s", tostring(h), tostring(r));
+		--module:log("debug", "h:%s r:%s", tostring(h), tostring(r));
 		if not res[h] then res[h] = array() end
 		res[h]:push(r);
 	end

@@ -19,6 +19,10 @@
 --
 -- Lua utils
 
+local type = type;
+local string = string;
+local t_insert, t_concat, t_remove, t_sort = table.insert, table.concat, table.remove, table.sort;
+
 -- copy a table
 function table.deepcopy(object)
     local lookup_table = {}
@@ -52,7 +56,7 @@ end
 -- add if element is not in table
 function table.add(t, element)
   if not table.contains(t, element) then
-    table.insert(t, element)
+    t_insert(t, element)
   end
 end
 
@@ -80,16 +84,16 @@ end
 function table.tostring( tbl )
   local result, done = {}, {}
   for k, v in ipairs( tbl ) do
-    table.insert( result, table.val_to_str( v ) )
+    t_insert( result, table.val_to_str( v ) )
     done[ k ] = true
   end
   for k, v in pairs( tbl ) do
     if not done[ k ] then
-      table.insert( result,
+      t_insert( result,
         table.key_to_str( k ) .. "=" .. table.val_to_str( v ) )
     end
   end
-  return "{" .. table.concat( result, "," ) .. "}"
+  return "{" .. t_concat( result, "," ) .. "}"
 end
 
 -- from table to string
@@ -98,7 +102,7 @@ end
 -- "'a','b'"
 -- implode("#",t)
 -- "a#b"
-function implode(delimiter, list, quoter)
+function table.implode(delimiter, list, quoter)
     local len = #list
     if not delimiter then
         error("delimiter is nil")
@@ -117,7 +121,7 @@ function implode(delimiter, list, quoter)
 end
 
 -- from string to table
-function explode(delimiter, text)
+function string.explode(delimiter, text)
     local list = {}
     local pos = 1
 
@@ -135,10 +139,10 @@ function explode(delimiter, text)
         local first, last = string.find(text, delimiter, pos)
         -- print (first, last)
         if first then
-            table.insert(list, string.sub(text, pos, first-1))
+            t_insert(list, string.sub(text, pos, first-1))
             pos = last+1
         else
-            table.insert(list, string.sub(text, pos))
+            t_insert(list, string.sub(text, pos))
             break
         end
     end
@@ -152,3 +156,5 @@ end
 function string.ends(String,End)
    return End=='' or string.sub(String,-string.len(End))==End
 end
+
+return {table=table, string=string}
