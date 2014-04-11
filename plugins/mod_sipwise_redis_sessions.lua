@@ -6,13 +6,17 @@
 --
 
 module:set_global();
-
+require "util.table";
+local jid = require "util.jid";
+local array = require "util.array";
 local redis = require 'redis';
 local redis_config = {
 	port = 6739, host = "127.0.0.1",
 	server_id = "0", redis_db = "2"
 };
 local redis_client;
+
+local redis_sessions = module:shared("redis_sessions");
 
 local function test_connection()
 	if not redis_client then return nil end;
@@ -33,18 +37,54 @@ end
 
 local function resource_bind(event)
 	local session = event.session;
+	local node, domain, resource = jid.split(session.full_jid);
+	local full_jid, bare_jid = session.full_jid, node.."@"..domain;
+
 	module:log("debug", "resource-bind from %s", session.host);
-	module:log("debug", "save %s", session.full_jid);
+	module:log("debug", "save [%s]=%s", full_jid, redis_config.server_id);
 	if not test_connection() then client_connect() end
-	redis_client:set(session.full_jid, redis_config.server_id);
+	redis_client:set(full_jid, redis_config.server_id);
+	module:log("debug", "append [%s]=>%s:%s", bare_jid, redis_config.server_id, resource);
+	redis_client:sadd(bare_jid, redis_config.server_id..":"..resource);
+	module:log("debug", "done");
 end
 
 local function resource_unbind(event)
 	local session, err = event.session, event.error;
+	local node, domain, resource = jid.split(session.full_jid);
+	local full_jid, bare_jid = session.full_jid, node.."@"..domain;
+
 	module:log("debug", "resource-unbind from %s", session.host);
-	module:log("debug", "remove %s", session.full_jid);
+	module:log("debug", "remove [%s]=%s", full_jid, redis_config.server_id);
 	if not test_connection() then client_connect() end
-	redis_client:del(session.full_jid);
+	redis_client:del(full_jid);
+	module:log("debug", "remove [%s]=>%s:%s", bare_jid, redis_config.server_id, resource);
+	redis_client:srem(bare_jid, redis_config.server_id..":"..resource);
+	module:log("debug", "done");
+end
+
+local function split_key(key)
+	local t = explode(':', key);
+	return t[1], t[2];
+end
+
+function redis_sessions.get_hosts(j)
+	local node, domain, resource = jid.split(j);
+	local bare_jid = node.."@"..domain;
+	local res = {};
+	local l, h, r;
+
+	module:log("debug", "search session:%s host", bare_jid);
+	if not test_connection() then client_connect() end
+	l = redis_client:smembers(bare_jid);
+	module:log("debug", "l:%s", table.tostring(l));
+	for _,v in pairs(l) do
+		h, r = split_key(v);
+		module:log("debug", "h:%s r:%s", tostring(h), tostring(r));
+		if not res[h] then res[h] = array() end
+		res[h]:push(r);
+	end
+	return res;
 end
 
 function module.load()
