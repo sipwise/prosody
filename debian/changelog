@@ -1,3 +1,9 @@
+ngcp-prosody-modules (1.0.2) unstable; urgency=medium
+
+  * [15e1422] MT#7053 add database name to the queries. Use auth_sql prosody config.
+
+ -- Victor Seva <vseva@sipwise.com>  Tue, 13 May 2014 20:47:41 +0200
+
 ngcp-prosody-modules (1.0.1) unstable; urgency=low
 
   * [dea7650] Implicitely add domain with "search" prefix.
