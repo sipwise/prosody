@@ -14,31 +14,31 @@ local get_reply = template[[
 ]].apply({});
 
 local usr_replacements_query = [[
-SELECT vrr.match_pattern, vrr.replace_pattern FROM voip_preferences vp
-  LEFT JOIN voip_usr_preferences vup ON vup.attribute_id = vp.id
-  LEFT JOIN voip_subscribers vs ON vs.id = vup.subscriber_id
-  LEFT JOIN voip_domains vd ON vd.id = vs.domain_id
-  LEFT JOIN voip_rewrite_rule_sets vrrs ON vrrs.callee_in_dpid = vup.value
-  LEFT JOIN voip_rewrite_rules vrr ON vrr.set_id = vrrs.id AND vrr.direction = 'in' AND vrr.field = 'callee'
+SELECT vrr.match_pattern, vrr.replace_pattern FROM provisioning.voip_preferences vp
+  LEFT JOIN provisioning.voip_usr_preferences vup ON vup.attribute_id = vp.id
+  LEFT JOIN provisioning.voip_subscribers vs ON vs.id = vup.subscriber_id
+  LEFT JOIN provisioning.voip_domains vd ON vd.id = vs.domain_id
+  LEFT JOIN provisioning.voip_rewrite_rule_sets vrrs ON vrrs.callee_in_dpid = vup.value
+  LEFT JOIN provisioning.voip_rewrite_rules vrr ON vrr.set_id = vrrs.id AND vrr.direction = 'in' AND vrr.field = 'callee'
 WHERE vp.attribute = 'rewrite_callee_in_dpid' AND vs.username = ? AND vd.domain = ?
   ORDER BY vrr.priority ASC;
 ]];
 
 local dom_replacements_query = [[
-SELECT vrr.match_pattern, vrr.replace_pattern FROM voip_preferences vp
-  LEFT JOIN voip_dom_preferences vdp ON vdp.attribute_id = vp.id
-  LEFT JOIN voip_domains vd ON vd.id = vdp.domain_id
-  LEFT JOIN voip_rewrite_rule_sets vrrs ON vrrs.callee_in_dpid = vdp.value
-  LEFT JOIN voip_rewrite_rules vrr ON vrr.set_id = vrrs.id AND vrr.direction = 'in' AND vrr.field = 'callee' 
+SELECT vrr.match_pattern, vrr.replace_pattern FROM provisioning.voip_preferences vp
+  LEFT JOIN provisioning.voip_dom_preferences vdp ON vdp.attribute_id = vp.id
+  LEFT JOIN provisioning.voip_domains vd ON vd.id = vdp.domain_id
+  LEFT JOIN provisioning.voip_rewrite_rule_sets vrrs ON vrrs.callee_in_dpid = vdp.value
+  LEFT JOIN provisioning.voip_rewrite_rules vrr ON vrr.set_id = vrrs.id AND vrr.direction = 'in' AND vrr.field = 'callee'
 WHERE vp.attribute = 'rewrite_callee_in_dpid'  AND vd.domain = ?
   ORDER BY vrr.priority ASC;
 ]];
 
 local locale_query = [[
-SELECT vp.attribute, vup.value FROM voip_preferences vp
-  LEFT JOIN voip_usr_preferences vup ON vup.attribute_id = vp.id
-  LEFT JOIN voip_subscribers vs ON vs.id = vup.subscriber_id
-  LEFT JOIN voip_domains vd ON vd.id = vs.domain_id
+SELECT vp.attribute, vup.value FROM provisioning.voip_preferences vp
+  LEFT JOIN provisioning.voip_usr_preferences vup ON vup.attribute_id = vp.id
+  LEFT JOIN provisioning.voip_subscribers vs ON vs.id = vup.subscriber_id
+  LEFT JOIN provisioning.voip_domains vd ON vd.id = vs.domain_id
 WHERE (vp.attribute = 'ac' or vp.attribute = 'cc')
   AND vs.username = ?
   AND vd.domain = ?;
@@ -50,7 +50,7 @@ WHERE alias_username=?;
 ]];
 
 local mod_sql = module:require("sql");
-local params = module:get_option("voip_sql", {
+local params = module:get_option("auth_sql", {
 	driver = "MySQL", 
 	database = "provisioning", 
 	username = "prosody", 
