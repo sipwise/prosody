@@ -1,3 +1,12 @@
+ngcp-prosody-modules (1.1.0.2+0~mr3.2.1.2) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [a4624a1] MT#7053 add database name to the queries. Use auth_sql prosody config.
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 13 May 2014 20:35:43 +0200
+
 ngcp-prosody-modules (1.1.0.1+0~mr3.2.1.1) unstable; urgency=low
 
   * New release.
