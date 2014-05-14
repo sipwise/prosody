@@ -1,3 +1,17 @@
+ngcp-prosody-modules (1.3.0.0+0~mr3.3.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [47f488b] Add licence note on source files
+  * [8dd77ca] MT#6409 Create mod_sipwise_admin_telnet
+  * [f4cef17] MT#6411 Add mod_sipwise_redis_sessions module.
+  * [efb226e] MT#6285 add mod_log_auth plugin
+  * [f53d100] MT#7053 add database name to the queries. Use auth_sql prosody config.
+
+  [ Michael Prokop ]
+  * [80bcd45] MT#6511 Bump Standards-Version to 3.9.5
+
+ -- Alexander Lutay <alutay@sipwise.com>  Wed, 14 May 2014 11:10:31 +0200
+
 ngcp-prosody-modules (1.2.0.0+0~mr3.3.0.0) unstable; urgency=low
 
   [ Andreas Granig ]
