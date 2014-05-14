@@ -1,3 +1,10 @@
+ngcp-prosody-modules (1.2.1.1+0~mr3.2.2.1) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [8d00b95] MT#7053 add database name to the queries. Use auth_sql prosody config.
+
+ -- Alexander Lutay <alutay@sipwise.com>  Wed, 14 May 2014 11:05:57 +0200
+
 ngcp-prosody-modules (1.1.1.1+0~mr3.2.2.1) unstable; urgency=low
 
   * New release.
