@@ -1,3 +1,12 @@
+ngcp-prosody-modules (1.3.1.0+0~mr3.3.1.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [47678b7] MT#6285 add mod_log_auth plugin
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 26 May 2014 15:58:41 +0200
+
 ngcp-prosody-modules (1.3.0.0+0~mr3.3.0.0) unstable; urgency=low
 
   [ Victor Seva ]
