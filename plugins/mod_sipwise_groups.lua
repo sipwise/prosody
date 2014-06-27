@@ -6,12 +6,13 @@
 --
 
 local lookup_query = [[
-SELECT g.name, s.username, d.domain
+SELECT g.username, s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
-LEFT JOIN provisioning.voip_pbx_groups AS g ON s.pbx_group_id = g.id
+LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
+LEFT JOIN provisioning.voip_subscribers AS g ON g.id = ug.group_id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE account_id = ? AND s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND ug.group_id IS NOT NULL
 AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
@@ -21,29 +22,32 @@ SELECT s.username, d.domain, p.value
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE account_id = ? AND s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL
+LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND ug.group_id IS NOT NULL
 AND p.attribute_id = ?
 ORDER BY s.username;
 ]];
 
 local lookup_user_group_query = [[
-SELECT g.name
+SELECT g.username
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
-LEFT JOIN provisioning.voip_pbx_groups AS g ON s.pbx_group_id = g.id
-WHERE account_id = ? AND
+LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
+LEFT JOIN provisioning.voip_subscribers AS g ON g.id = ug.group_id
+WHERE s.account_id = ? AND
 s.username = ? AND d.domain = ? AND
-s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL;
+s.is_pbx_group = 0 AND ug.group_id IS NOT NULL;
 ]];
 
 local lookup_users_by_groups_query = [[
-SELECT g.name, s.username, d.domain
+SELECT g.username, s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
-LEFT JOIN provisioning.voip_pbx_groups AS g ON s.pbx_group_id = g.id
+LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
+LEFT JOIN provisioning.voip_subscribers AS g ON g.id = ug.group_id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE account_id = ? AND s.is_pbx_group = 0 AND s.pbx_group_id IS NOT NULL
-AND (p.attribute_id = ? AND p.value = '1') AND g.name in (?)
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND ug.group_id IS NOT NULL
+AND (p.attribute_id = ? AND p.value = '1') AND g.username in (?)
 ORDER BY s.username;
 ]];
 
@@ -52,7 +56,7 @@ SELECT s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE account_id = ? AND s.is_pbx_group = 0
+WHERE s.account_id = ? AND s.is_pbx_group = 0
 AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
@@ -222,7 +226,7 @@ function inject_roster_contacts(username, host, roster)
 		end
 		return result;
 	end
-	
+
 	account_id = lookup_account_id();
 	-- TODO: set this parameters from usr_preferences
 	groups = lookup_groups(true, true);
@@ -254,13 +258,13 @@ function inject_roster_contacts(username, host, roster)
 		module:log("debug", "Importing group %s", group_name);
 		import_jids_to_roster(group_name);
 	end
-	
+
 	if roster[false] then
 		roster[false].version = true;
 	end
 end
 
-function module.load()	
+function module.load()
 	module:hook("roster-load", inject_roster_contacts);
 	module:log("info", "Groups loaded successfully");
 end
