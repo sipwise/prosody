@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 case "$1" in
 	configure)
 		if [ -x "/usr/sbin/ngcp-check_active" ]; then
