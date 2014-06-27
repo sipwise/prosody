@@ -12,7 +12,8 @@ LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
 LEFT JOIN provisioning.voip_subscribers AS g ON g.id = ug.group_id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE s.account_id = ? AND s.is_pbx_group = 0 AND ug.group_id IS NOT NULL
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND s.is_pbx_pilot = 0
+AND ug.group_id IS NOT NULL
 AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
@@ -23,7 +24,8 @@ FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
 LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
-WHERE s.account_id = ? AND s.is_pbx_group = 0 AND ug.group_id IS NOT NULL
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND s.is_pbx_pilot = 0
+AND ug.group_id IS NOT NULL
 AND p.attribute_id = ?
 ORDER BY s.username;
 ]];
@@ -36,7 +38,7 @@ LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
 LEFT JOIN provisioning.voip_subscribers AS g ON g.id = ug.group_id
 WHERE s.account_id = ? AND
 s.username = ? AND d.domain = ? AND
-s.is_pbx_group = 0 AND ug.group_id IS NOT NULL;
+s.is_pbx_group = 0 AND s.is_pbx_pilot = 0 AND ug.group_id IS NOT NULL;
 ]];
 
 local lookup_users_by_groups_query = [[
@@ -46,7 +48,8 @@ LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_pbx_groups AS ug ON s.id = ug.subscriber_id
 LEFT JOIN provisioning.voip_subscribers AS g ON g.id = ug.group_id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE s.account_id = ? AND s.is_pbx_group = 0 AND ug.group_id IS NOT NULL
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND s.is_pbx_pilot = 0
+AND ug.group_id IS NOT NULL
 AND (p.attribute_id = ? AND p.value = '1') AND g.username in (?)
 ORDER BY s.username;
 ]];
@@ -56,7 +59,7 @@ SELECT s.username, d.domain
 FROM provisioning.voip_subscribers AS s
 LEFT JOIN provisioning.voip_domains AS d ON s.domain_id = d.id
 LEFT JOIN provisioning.voip_usr_preferences as p ON p.subscriber_id = s.id
-WHERE s.account_id = ? AND s.is_pbx_group = 0
+WHERE s.account_id = ? AND s.is_pbx_group = 0 AND s.is_pbx_pilot = 0
 AND (p.attribute_id = ? AND p.value = '1')
 ORDER BY s.username;
 ]];
