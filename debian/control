@@ -8,6 +8,7 @@ Homepage: http://sipwise.com/
 
 Package: ngcp-prosody-modules
 Architecture: amd64
+Pre-Depends: ngcp-system-tools
 Depends: lua-bitop,
          lua-dbi-common,
          lua-dbi-mysql,
