@@ -1,3 +1,15 @@
+ngcp-prosody-modules (1.5.0.0+0~mr3.5.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [f9d8739] MT#7545 Adapt queries to the new voip_pbx_groups schema.
+  * [9a736c5] MT#6431 restart prosody service after instalation
+  * [a02bb76] MT#7545 remove pilot from the list of subscribers
+  * [fce80c1] MT#6431 fix postinst script if node is not active
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 10 Jul 2014 15:35:26 +0200
+
 ngcp-prosody-modules (1.4.0.0+0~mr3.4.0.0) unstable; urgency=low
 
   [ Victor Seva ]
