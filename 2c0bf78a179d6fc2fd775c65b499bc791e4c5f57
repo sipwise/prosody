@@ -22,6 +22,30 @@
       "revId": "2c0bf78a179d6fc2fd775c65b499bc791e4c5f57",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "da141535_1ccf59b2",
+        "filename": "plugins/mod_sipwise_vcard_cusax.lua",
+        "patchSetId": 1
+      },
+      "lineNbr": 51,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2014-09-26T13:44:22Z",
+      "side": 1,
+      "message": "Yes, this is just the defaults. The proper config is on the template",
+      "parentUuid": "da141535_dcd9e184",
+      "range": {
+        "startLine": 51,
+        "startChar": 13,
+        "endLine": 51,
+        "endChar": 23
+      },
+      "revId": "2c0bf78a179d6fc2fd775c65b499bc791e4c5f57",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
