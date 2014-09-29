@@ -34,7 +34,7 @@ WHERE vp.attribute = 'mobile_push_enable'
 local push_dom_query = [[
 SELECT vp.attribute, vup.value FROM provisioning.voip_preferences vp
   LEFT JOIN provisioning.voip_dom_preferences vup ON vup.attribute_id = vp.id
-  LEFT JOIN provisioning.voip_domains vd ON vd.id = vs.domain_id
+  LEFT JOIN provisioning.voip_domains vd ON vd.id = vup.domain_id
 WHERE vp.attribute = 'mobile_push_enable'
   AND vd.domain = ?;
 ]];
