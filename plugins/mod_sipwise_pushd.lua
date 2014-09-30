@@ -76,17 +76,24 @@ local function handle_offline(event)
 	module:log("debug", "handle_offline");
 	local origin, stanza = event.origin, event.stanza;
 	local to = stanza.attr.to;
+	local from = stanza.attr.from;
 	local node, host;
+	local caller = { username = 'unknow', host = 'unknown.local' };
 	local http_options = {
 		method = "POST",
 		body = "",
 	}
 
+	if from then
+		caller.username, caller.host = jid_split(from);
+	end
+
 	if to then
 		node, host = jid_split(to);
 		if push_enable(node, host) then
 			http_options.body = format(pushd_config.query,
-				origin.username, origin.host, node, host);
+				origin.username or caller.username,
+				origin.host or caller.host, node, host);
 			module:log("debug", "Sending http pushd request: %s data: %s",
 				pushd_config.url, http_options.body);
 			http.request(pushd_config.url, http_options, process_response);
