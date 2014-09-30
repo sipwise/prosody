@@ -57,11 +57,17 @@ local function push_enable(username, domain)
 		engine.conn = nil;
 		engine:connect();
 	end
-	for row in engine:select(push_usr_query, username, domain) do
-		if row[2] == "1" then return true;	end
+	for row in engine:select(push_dom_query, domain) do
+		if row[2] == "1" then
+			module:log("debug", "domain mobile_push_enable pref set");
+			return true;
+		end
 	end
 	for row in engine:select(push_usr_query, username, domain) do
-		if row[2] == "1" then return true; end
+		if row[2] == "1" then
+			module:log("debug", "usr mobile_push_enable pref set");
+			return true;
+		end
 	end
 	return false;
 end
