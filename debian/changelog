@@ -1,3 +1,18 @@
+ngcp-prosody-modules (1.6.0.0+0~mr3.6.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [0d82202] MT#8851 add mod_sipwise_pushd module
+  * [c84cc7e] MT#7505 add .gitreview file
+  * [2c0bf78] MT#8951 sipwise_vcard_cusax: add numbers, name and email
+  * [31fb42e] MT#8951 fix vcard format and querys
+  * [963cfd4] MT#8851 mod_sipwise_pushd: fix 0d8220219aeb2 domain query
+  * [4201b42] MT#8851 mod_sipwise_pushd: fix 0d8220219aeb2 domain query call
+  * [39e4b7d] MT#8851 pushd: use from info when available if origin is null
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 09 Oct 2014 16:52:28 +0200
+
 ngcp-prosody-modules (1.5.0.0+0~mr3.5.0.0) unstable; urgency=low
 
   [ Victor Seva ]
