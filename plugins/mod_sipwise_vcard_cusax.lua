@@ -16,6 +16,8 @@ local log = require "util.logger".init("sipwise_vcard_cusax");
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
 
+local vcard = module:shared("vcard");
+
 local email_query = [[
 SELECT bc.email, bccc.email FROM billing.voip_subscribers AS vs
   LEFT join billing.contacts AS bc ON vs.contact_id = bc.id
@@ -54,7 +56,7 @@ engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
 module:add_feature("vcard-temp");
 
-local function get_subscriber_info(user, host)
+function vcard.get_subscriber_info(user, host)
 	local info = { user = user, domain = host, aliases = {} };
 	local row;
 	-- Reconnect to DB if necessary
@@ -137,7 +139,7 @@ local function handle_vcard(event)
 			user = session.username;
 			host = session.host;
 		end
-		local info = get_subscriber_info(user, host);
+		local info = vcard.get_subscriber_info(user, host);
 		local vCard = generate_vcard(info);
 		local reply = st.reply(stanza):add_child(st.deserialize(vCard));
 		--module:log("debug", tostring(reply));
