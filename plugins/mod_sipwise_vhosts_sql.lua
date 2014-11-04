@@ -85,6 +85,7 @@ local function load_vhosts_from_db()
 			hostmanager.activate(row.domain, host_config);
 			module:log("debug", "load_vhosts_from_db: activate implicit search.%s", row.domain);
 			hostmanager.activate("search."..row.domain, { component_module = "sipwise_vjud" });
+			hostmanager.activate("conference."..row.domain, { component_module = "muc" });
 		end
 	end
 end
