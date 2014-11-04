@@ -5,13 +5,21 @@
 -- COPYING file in the source package for more information.
 --
 
+module:depends("sipwise_vcard_cusax");
+
+local datamanager = require "util.datamanager";
 local mod_sql = module:require("sql");
 local format = string.format;
 local jid_split = require "util.jid".split;
+local jid_bare = require "util.jid".bare;
+local hosts = prosody.hosts;
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
-	query = "caller=%s@%s&callee=%s&domain=%s",
+	gcm = true,
+	apns = true,
+	call_sound = 'call.wav',
+	msg_sound  = 'msg.wav'
 };
 local sql_config = {
 	driver = "MySQL",
@@ -43,10 +51,10 @@ local engine;
 local function process_response(response, code, request)
 	if code >= 200 and code < 299 then
 		module:log("debug", "pushd response OK[%s] %s",
-			tostring(code), response);
+			tostring(code), tostring(response));
 	else
 		module:log("error", "pushd response KO[%s] %s",
-			tostring(code), response);
+			tostring(code), tostring(response));
 	end
 end
 
@@ -72,6 +80,26 @@ local function push_enable(username, domain)
 	return false;
 end
 
+local function get_caller_info(jid)
+	local node, host = jid_split(jid);
+	local vcard = module:shared(format("/%s/sipwise_vcard_cusax/vcard", host));
+	if vcard then
+		local info = vcard.get_subscriber_info(node, host);
+		return info;
+	end
+end
+
+local function get_callee_badge(jid)
+	local node, host = jid_split(jid);
+	local result = datamanager.list_load(node, host, "offline");
+	if result then
+		module:log("debug", "%d offline messages for %s", #result, jid);
+		return #result
+	end
+	module:log("debug", "0 offline messages for %s", jid);
+	return 0
+end
+
 local function handle_offline(event)
 	module:log("debug", "handle_offline");
 	local origin, stanza = event.origin, event.stanza;
@@ -83,6 +111,56 @@ local function handle_offline(event)
 		method = "POST",
 		body = "",
 	}
+	local function build_push_gcm_query(caller_jid, type)
+		local muc = stanza:get_child('x', 'jabber:x:conference');
+		local query_gcm_muc = '';
+		if muc then
+			local muc_jid = muc.attr.jid;
+			local muc_name, muc_domain = jid_split(muc_jid);
+			local room = hosts[muc_domain].modules.muc.rooms[muc_jid];
+			query_gcm_muc = format("gcm_data_room_jid=%s&gcm_data_room_description=%s",
+				muc_jid, room:get_description() or 'Prosody chatroom');
+		end
+
+		local query_gcm = format("gcm_data_sender_jid=%s", caller_jid);
+		local caller_info = get_caller_info(caller_jid);
+		local query_gcm_ext = format("gcm_data_sender_name=%s&gcm_data_type=%s&gcm_data_message=%s",
+			caller_info.display_name or '', type, stanza:get_child('body'):get_text() or '');
+
+		local query_gcm = http_options.body..'&'..query_gcm..'&'..query_gcm_ext;
+		if muc then
+			return query_gcm..'&'..query_gcm_muc;
+		end
+		return query_gcm;
+	end
+	local function build_push_aspn_query(type)
+		local badge = get_callee_badge(to);
+		local query_aspn = format("aspn_sound=%s&aspn_badge=%s&aspn_alert=%s",
+			pushd_config.msg_sound or '', badge, stanza:get_child('body'):get_text() or '');
+		return http_options.body..'&'..query_aspn;
+	end
+	local function build_push_query()
+		local type = 'message';
+		local invite = stanza:get_child('x', 'http://jabber.org/protocol/muc#user');
+		local caller_jid = format("%s@%s", origin.username or caller.username,
+			origin.host or caller.host);
+		if invite then
+			type = 'invite';
+			caller_jid = jid_bare(invite:get_child('invite').attr.from) or caller_jid;
+		end
+
+		local query_basic = format("caller=%s&callee=%s&domain=%s",
+			 caller_jid, node, host);
+		http_options.body = query_basic;
+		if pushd_config.gcm then
+			http_options.body = build_push_gcm_query(caller_jid, type);
+		end
+		if pushd_config.aspn then
+			http_options.body = build_push_aspn_query(type);
+		end
+	end
+
+	module:log("debug", "stanza[%s]", tostring(stanza));
 
 	if from then
 		caller.username, caller.host = jid_split(from);
@@ -91,9 +169,7 @@ local function handle_offline(event)
 	if to then
 		node, host = jid_split(to);
 		if push_enable(node, host) then
-			http_options.body = format(pushd_config.query,
-				origin.username or caller.username,
-				origin.host or caller.host, node, host);
+			build_push_query();
 			module:log("debug", "Sending http pushd request: %s data: %s",
 				pushd_config.url, http_options.body);
 			http.request(pushd_config.url, http_options, process_response);
