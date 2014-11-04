@@ -10,6 +10,7 @@ module:set_global();
 local log = require "util.logger".init("sipwise_vhosts_sql");
 local DBI = require "DBI"
 local hostmanager = require "core.hostmanager";
+local configmanager = require "core.configmanager";
 
 local connection;
 local params = module:get_option("auth_sql", module:get_option("auth_sql"));
@@ -85,7 +86,10 @@ local function load_vhosts_from_db()
 			hostmanager.activate(row.domain, host_config);
 			module:log("debug", "load_vhosts_from_db: activate implicit search.%s", row.domain);
 			hostmanager.activate("search."..row.domain, { component_module = "sipwise_vjud" });
-			hostmanager.activate("conference."..row.domain, { component_module = "muc" });
+			configmanager.set("conference."..row.domain, "component_module", "muc");
+			local conference_config = configmanager.getconfig()["conference."..row.domain];
+			conference_config['restrict_room_creation'] = 'local';
+			hostmanager.activate("conference."..row.domain, conference_config);
 		end
 	end
 end
