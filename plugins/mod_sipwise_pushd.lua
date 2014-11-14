@@ -18,8 +18,8 @@ local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
 	gcm = true,
 	apns = true,
-	call_sound = 'call.wav',
-	msg_sound  = 'msg.wav'
+	call_sound = 'incoming_call.caf',
+	msg_sound  = 'incoming_message.caf'
 };
 local sql_config = {
 	driver = "MySQL",
@@ -133,11 +133,11 @@ local function handle_offline(event)
 		end
 		return query_gcm;
 	end
-	local function build_push_aspn_query(type)
+	local function build_push_apns_query(type)
 		local badge = get_callee_badge(to);
-		local query_aspn = format("aspn_sound=%s&aspn_badge=%s&aspn_alert=%s",
+		local query_apns = format("apns_sound=%s&apns_badge=%s&apns_alert=%s",
 			pushd_config.msg_sound or '', badge, stanza:get_child('body'):get_text() or '');
-		return http_options.body..'&'..query_aspn;
+		return http_options.body..'&'..query_apns;
 	end
 	local function build_push_query()
 		local type = 'message';
@@ -155,8 +155,8 @@ local function handle_offline(event)
 		if pushd_config.gcm then
 			http_options.body = build_push_gcm_query(caller_jid, type);
 		end
-		if pushd_config.aspn then
-			http_options.body = build_push_aspn_query(type);
+		if pushd_config.apns then
+			http_options.body = build_push_apns_query(type);
 		end
 	end
 
