@@ -111,52 +111,57 @@ local function handle_offline(event)
 		method = "POST",
 		body = "",
 	}
-	local function build_push_gcm_query(caller_jid, type)
+	local message;
+	local function get_message()
+		local body = stanza:get_child('body');
+		if body then
+			return body:get_text();
+		end
+	end
+	local function build_push_common_query(caller_jid, type, message)
 		local muc = stanza:get_child('x', 'jabber:x:conference');
-		local query_gcm_muc = '';
+		local query_muc = '';
 		if muc then
 			local muc_jid = muc.attr.jid;
 			local muc_name, muc_domain = jid_split(muc_jid);
 			local room = hosts[muc_domain].modules.muc.rooms[muc_jid];
-			query_gcm_muc = format("gcm_data_room_jid=%s&gcm_data_room_description=%s",
+			query_muc = format("data_room_jid=%s&data_room_description=%s",
 				muc_jid, room:get_description() or 'Prosody chatroom');
 		end
+		local query = format("callee=%s&domain=%s", node, host);
+		query = query .. '&' .. format("data_sender_jid=%s", caller_jid);
+		local caller_info = get_caller_info(caller_jid) or {display_name = ''};
+		query = query .. '&' .. format(
+			"data_sender_name=%s&data_type=%s&data_message=%s",
+			caller_info.display_name , type, message);
 
-		local query_gcm = format("gcm_data_sender_jid=%s", caller_jid);
-		local caller_info = get_caller_info(caller_jid);
-		local query_gcm_ext = format("gcm_data_sender_name=%s&gcm_data_type=%s&gcm_data_message=%s",
-			caller_info.display_name or '', type, stanza:get_child('body'):get_text() or '');
-
-		local query_gcm = http_options.body..'&'..query_gcm..'&'..query_gcm_ext;
 		if muc then
-			return query_gcm..'&'..query_gcm_muc;
+			return query .. '&' .. query_muc;
 		end
-		return query_gcm;
+		return query;
 	end
-	local function build_push_apns_query(type)
+	local function build_push_apns_query(type, message)
 		local badge = get_callee_badge(to);
-		local query_apns = format("apns_sound=%s&apns_badge=%s&apns_alert=%s",
-			pushd_config.msg_sound or '', badge, stanza:get_child('body'):get_text() or '');
+		local query_apns = format(
+			"apns_sound=%s&apns_badge=%s&apns_alert=%s",
+			pushd_config.msg_sound or '', badge, message);
 		return http_options.body..'&'..query_apns;
 	end
-	local function build_push_query()
+	local function build_push_query(message)
 		local type = 'message';
-		local invite = stanza:get_child('x', 'http://jabber.org/protocol/muc#user');
+		local invite = stanza:get_child('x',
+			'http://jabber.org/protocol/muc#user');
 		local caller_jid = format("%s@%s", origin.username or caller.username,
 			origin.host or caller.host);
 		if invite then
 			type = 'invite';
-			caller_jid = jid_bare(invite:get_child('invite').attr.from) or caller_jid;
+			caller_jid = jid_bare(invite:get_child('invite').attr.from) or
+				caller_jid;
 		end
 
-		local query_basic = format("caller=%s&callee=%s&domain=%s",
-			 caller_jid, node, host);
-		http_options.body = query_basic;
-		if pushd_config.gcm then
-			http_options.body = build_push_gcm_query(caller_jid, type);
-		end
+		http_options.body = build_push_common_query(caller_jid, type, message);
 		if pushd_config.apns then
-			http_options.body = build_push_apns_query(type);
+			http_options.body = build_push_apns_query(type, message);
 		end
 	end
 
@@ -168,13 +173,21 @@ local function handle_offline(event)
 
 	if to then
 		node, host = jid_split(to);
-		if push_enable(node, host) then
-			build_push_query();
-			module:log("debug", "Sending http pushd request: %s data: %s",
-				pushd_config.url, http_options.body);
-			http.request(pushd_config.url, http_options, process_response);
+		message = get_message();
+		if message then
+			module:log("debug", "message OK");
+			if push_enable(node, host) then
+				build_push_query(message);
+				if http_options.body then
+					module:log("debug", "Sending http pushd request: %s data: %s",
+						pushd_config.url, http_options.body);
+					http.request(pushd_config.url, http_options, process_response);
+				end
+			else
+				module:log("debug", "no mobile_push_enable pref set for %s", to);
+			end
 		else
-			module:log("debug", "no mobile_push_enable pref set for %s", to);
+			module:log("debug", "no message body");
 		end
 	end
 end
