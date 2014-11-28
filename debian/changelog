@@ -1,3 +1,16 @@
+ngcp-prosody-modules (1.6.2.1+0~mr3.6.2.1) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [20f76d0] MT#9763 pushd: extended gcm and aspn parameters.
+  * [3150825] MT#9763 Pushd: use new format for pushd query. Skip empty messages
+
+  [ Alexander Lutay ]
+  * [b50ca43] MT#9763 Pushd: updated Apple sound files + typo fix s/aspn/apns/
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 28 Nov 2014 16:29:58 +0100
+
 ngcp-prosody-modules (1.6.2.0+0~mr3.6.2.0) unstable; urgency=low
 
   [ Victor Seva ]
