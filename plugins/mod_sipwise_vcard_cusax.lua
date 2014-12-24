@@ -37,10 +37,10 @@ WHERE vp.attribute = 'display_name'
 ]];
 
 local aliases_query = [[
-SELECT pa.username FROM provisioning.voip_dbaliases AS pa
+SELECT pa.username, pa.is_primary FROM provisioning.voip_dbaliases AS pa
   LEFT JOIN provisioning.voip_subscribers AS ps ON ps.id = pa.subscriber_id
   LEFT JOIN provisioning.voip_domains AS pd ON ps.domain_id = pd.id
-WHERE ps.username = ? AND pd.domain = ?;
+WHERE ps.username = ? AND pd.domain = ? ORDER BY pa.is_primary DESC;
 ]];
 
 local mod_sql = module:require("sql");
