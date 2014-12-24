@@ -121,6 +121,7 @@ local function handle_offline(event)
 	local function build_push_common_query(caller_jid, type, message)
 		local muc = stanza:get_child('x', 'jabber:x:conference');
 		local query_muc = '';
+		local caller_defaults = {display_name = '', aliases = {''}};
 		if muc then
 			local muc_jid = muc.attr.jid;
 			local muc_name, muc_domain = jid_split(muc_jid);
@@ -129,11 +130,12 @@ local function handle_offline(event)
 				muc_jid, room:get_description() or 'Prosody chatroom');
 		end
 		local query = format("callee=%s&domain=%s", node, host);
-		query = query .. '&' .. format("data_sender_jid=%s", caller_jid);
-		local caller_info = get_caller_info(caller_jid) or {display_name = ''};
+		query = query .. '&' .. format("data_sender_jid=%s&data_sender_sip=%s",
+			caller_jid, jid_bare(caller_jid));
+		local caller_info = get_caller_info(caller_jid) or caller_defaults;
 		query = query .. '&' .. format(
-			"data_sender_name=%s&data_type=%s&data_message=%s",
-			caller_info.display_name , type, message);
+			"data_sender_number=%s&data_sender_name=%s&data_type=%s&data_message=%s",
+			caller_info.aliases[0], caller_info.display_name , type, message);
 
 		if muc then
 			return query .. '&' .. query_muc;
