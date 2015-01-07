@@ -1,3 +1,20 @@
+ngcp-prosody-modules (1.7.1.0+0~mr3.7.1.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [f031997] MT#9985 vhosts: enable MUC for domains
+  * [7945b1b] MT#9985 vhosts: rework enable MUC for domains
+  * [6dfa707] MT#9763 pushd: extended gcm and aspn parameters.
+  * [dd8da8e] MT#7141 upgrade package to 3.0 style
+  * [a6e0655] MT#9763 Pushd: use new format for pushd query. Skip empty messages
+  * [d4995ce] MT#9763 push: add data_sender_number and data_sender_sip
+
+  [ Alexander Lutay ]
+  * [5914b4f] MT#9763 Pushd: updated Apple sound files + typo fix s/aspn/apns/
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 07 Jan 2015 21:37:23 +0100
+
 ngcp-prosody-modules (1.7.0.0+0~mr3.7.0.0) unstable; urgency=low
 
   * New release.
