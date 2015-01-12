@@ -107,6 +107,8 @@ local function handle_offline(event)
 	local from = stanza.attr.from;
 	local node, host;
 	local caller = { username = 'unknow', host = 'unknown.local' };
+	local caller_defaults = {display_name = '', aliases = {''}};
+	local caller_info;
 	local http_options = {
 		method = "POST",
 		body = "",
@@ -121,7 +123,6 @@ local function handle_offline(event)
 	local function build_push_common_query(caller_jid, type, message)
 		local muc = stanza:get_child('x', 'jabber:x:conference');
 		local query_muc = '';
-		local caller_defaults = {display_name = '', aliases = {''}};
 		if muc then
 			local muc_jid = muc.attr.jid;
 			local muc_name, muc_domain = jid_split(muc_jid);
@@ -132,10 +133,9 @@ local function handle_offline(event)
 		local query = format("callee=%s&domain=%s", node, host);
 		query = query .. '&' .. format("data_sender_jid=%s&data_sender_sip=%s",
 			caller_jid, jid_bare(caller_jid));
-		local caller_info = get_caller_info(caller_jid) or caller_defaults;
 		query = query .. '&' .. format(
 			"data_sender_number=%s&data_sender_name=%s&data_type=%s&data_message=%s",
-			caller_info.aliases[1], caller_info.display_name , type, message);
+			caller_info.aliases[1], caller_info.display_name, type, message);
 
 		if muc then
 			return query .. '&' .. query_muc;
@@ -144,9 +144,11 @@ local function handle_offline(event)
 	end
 	local function build_push_apns_query(type, message)
 		local badge = get_callee_badge(to);
+		local msg_header = string.format("message received from %s\n",
+			caller_info.display_name);
 		local query_apns = format(
 			"apns_sound=%s&apns_badge=%s&apns_alert=%s",
-			pushd_config.msg_sound or '', badge, message);
+			pushd_config.msg_sound or '', badge, msg_header .. message);
 		return http_options.body..'&'..query_apns;
 	end
 	local function build_push_query(message)
@@ -160,7 +162,7 @@ local function handle_offline(event)
 			caller_jid = jid_bare(invite:get_child('invite').attr.from) or
 				caller_jid;
 		end
-
+		caller_info = get_caller_info(caller_jid) or caller_defaults;
 		http_options.body = build_push_common_query(caller_jid, type, message);
 		if pushd_config.apns then
 			http_options.body = build_push_apns_query(type, message);
