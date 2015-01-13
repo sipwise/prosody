@@ -120,22 +120,35 @@ local function handle_offline(event)
 			return body:get_text();
 		end
 	end
+	local function get_muc_info()
+		local muc_stanza = stanza:get_child('x', 'jabber:x:conference');
+		local muc = {};
+		if muc_stanza then
+			muc['jid'] = muc_stanza.attr.jid;
+			muc['name'], muc['domain'] = jid_split(muc['jid']);
+			local room = hosts[muc['domain']].modules.muc.rooms[muc['jid']];
+			muc['room'] = room:get_description() or 'Prosody chatroom';
+			muc['invite'] = format("Group chat invitation to '%s' from %s",
+				muc['room'], caller_info.display_name);
+			return muc
+		end
+		return nil
+	end
 	local function build_push_common_query(caller_jid, type, message)
-		local muc = stanza:get_child('x', 'jabber:x:conference');
+		local muc = get_muc_info();
 		local query_muc = '';
+		local msg;
 		if muc then
-			local muc_jid = muc.attr.jid;
-			local muc_name, muc_domain = jid_split(muc_jid);
-			local room = hosts[muc_domain].modules.muc.rooms[muc_jid];
 			query_muc = format("data_room_jid=%s&data_room_description=%s",
-				muc_jid, room:get_description() or 'Prosody chatroom');
+				muc['jid'], muc['room']);
+			msg = muc['invite'];
 		end
 		local query = format("callee=%s&domain=%s", node, host);
 		query = query .. '&' .. format("data_sender_jid=%s&data_sender_sip=%s",
 			caller_jid, jid_bare(caller_jid));
 		query = query .. '&' .. format(
 			"data_sender_number=%s&data_sender_name=%s&data_type=%s&data_message=%s",
-			caller_info.aliases[1], caller_info.display_name, type, message);
+			caller_info.aliases[1], caller_info.display_name, type, msg or message);
 
 		if muc then
 			return query .. '&' .. query_muc;
@@ -143,12 +156,17 @@ local function handle_offline(event)
 		return query;
 	end
 	local function build_push_apns_query(type, message)
+		local muc = get_muc_info();
 		local badge = get_callee_badge(to);
 		local msg_header = string.format("message received from %s\n",
 			caller_info.display_name);
+		local msg = msg_header .. message;
+		if muc then
+			msg = muc['invite'];
+		end
 		local query_apns = format(
 			"apns_sound=%s&apns_badge=%s&apns_alert=%s",
-			pushd_config.msg_sound or '', badge, msg_header .. message);
+			pushd_config.msg_sound or '', badge, msg);
 		return http_options.body..'&'..query_apns;
 	end
 	local function build_push_query(message)
