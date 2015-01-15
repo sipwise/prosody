@@ -1,3 +1,14 @@
+ngcp-prosody-modules (1.7.1.1+0~mr3.7.1.1) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [c0aeefb] MT#9763 pushd: add prefix with sender_name at apns_alert field
+  * [8081d01] MT#9763 pushd: set the push msg for muc invitations
+  * [4094869] MT#9763 pushd: fix get_caller_info()
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 15 Jan 2015 15:11:52 +0100
+
 ngcp-prosody-modules (1.7.1.0+0~mr3.7.1.0) unstable; urgency=low
 
   [ Victor Seva ]
