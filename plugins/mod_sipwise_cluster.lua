@@ -24,7 +24,6 @@ local core = {
 
 local cluster_config = {
 	me = "localhost",
-	hosts = {},
 	dialback_secret = nil
 };
 
@@ -220,7 +219,6 @@ end
 function module.load()
 	cluster_config = module:get_option("cluster", cluster_config);
 	cluster.dialback_secret = cluster_config.dialback_secret;
-	-- TODO check cluster_config.hosts is a set and does not have me
 	if cluster.dialback_secret then
 		module:hook("host-activated", set_dialback_secret, 100);
 	end
