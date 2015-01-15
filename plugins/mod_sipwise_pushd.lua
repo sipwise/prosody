@@ -85,6 +85,14 @@ local function get_caller_info(jid)
 	local vcard = module:shared(format("/%s/sipwise_vcard_cusax/vcard", host));
 	if vcard then
 		local info = vcard.get_subscriber_info(node, host);
+		module:log("debug", "caller_info of %s", jid);
+		if not info.display_name then
+			module:log("debug", "set display_name to %s", node);
+			info.display_name = node;
+		end
+		if not info.aliases then
+			info.aliases = caller_defaults.aliases;
+		end
 		return info;
 	end
 end
