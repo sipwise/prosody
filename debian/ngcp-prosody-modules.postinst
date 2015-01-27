@@ -20,7 +20,7 @@ case "$1" in
 				;;
 			esac
 		fi
-		if [ -x "/etc/init.d/prosody" ] && [ "$NGCP_IS_PROXY" == "yes" ]; then
+		if [ -x "/etc/init.d/prosody" ] && [ "$NGCP_IS_PROXY" = "yes" ]; then
 			echo "Restarting prosody service"
 			if [ -x "$(which invoke-rc.d 2>/dev/null)" ]; then
 				invoke-rc.d prosody restart || true
