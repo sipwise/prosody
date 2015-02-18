@@ -37,3 +37,4 @@ Description: ngcp modules for the prosody Jabber/XMPP server
   * mod_sipwise_redis_sessions: keep server's session info on redis
   * mod_sipwise_pushd: push notification to mobile users
   * mod_log_auth: logs IP address in a failed authentication attempt
+  * mod_sipwise_lastactivity: XEP-0012
