@@ -1,3 +1,13 @@
+ngcp-prosody-modules (1.7.2.1+0~mr3.7.2.1) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [2b089f2] MT#11125 don't restart prosody after install if node is not proxy
+  * [f41c436] MT#11125 fix bashism at 26c11e6e3841a. Don't restart prosody after install if node is not proxy
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 03 Mar 2015 16:49:00 +0100
+
 ngcp-prosody-modules (1.7.2.0+0~mr3.7.2.0) unstable; urgency=low
 
   [ Victor Seva ]
