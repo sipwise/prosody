@@ -1,3 +1,21 @@
+ngcp-prosody-modules (1.9.0.0+0~mr4.0.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [7780d3c] MT#10849: add mod_smacks plugin
+  * [aae45da] MT#6411 redis_session: new key schema
+  * [3f2c23f] MT#6407 prosody cluster
+  * [5021516] MT#9763 pushd: add prefix with sender_name at apns_alert field
+  * [73fde6c] MT#9763 pushd: set the push msg for muc invitations
+  * [af940bf] MT#6407 mod_sipwise_cluster: remove unused host config
+  * [f1631d6] MT#9763 pushd: fix get_caller_info()
+  * [26c11e6] MT#11125 don't restart prosody after install if node is not proxy
+  * [c4633d8] MT#11125 fix bashism at 26c11e6e3841a. Don't restart prosody after install if node is not proxy
+  * [a017dbf] MT#11583 add our own lastactivity module
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 18 Mar 2015 14:12:57 +0100
+
 ngcp-prosody-modules (1.8.0.0+0~mr3.8.0.0) unstable; urgency=low
 
   [ Victor Seva ]
