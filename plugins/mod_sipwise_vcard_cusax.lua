@@ -1,7 +1,7 @@
 -- Prosody IM
 -- Copyright (C) 2008-2010 Matthew Wild
 -- Copyright (C) 2008-2010 Waqas Hussain
--- Copyright (C) 2013-2014 Sipwise GmbH
+-- Copyright (C) 2013-2015 Sipwise GmbH
 --
 -- This is a stripped down version of mod_vcard for returning
 -- simply a vcard containing some info of
@@ -12,10 +12,8 @@
 -- COPYING file in the source package for more information.
 --
 
-local log = require "util.logger".init("sipwise_vcard_cusax");
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
-
 local vcard = module:shared("vcard");
 
 local email_query = [[
@@ -58,7 +56,6 @@ module:add_feature("vcard-temp");
 
 function vcard.get_subscriber_info(user, host)
 	local info = { user = user, domain = host, aliases = {} };
-	local row;
 	-- Reconnect to DB if necessary
 	if not engine.conn:ping() then
 		engine.conn = nil;
@@ -76,10 +73,17 @@ function vcard.get_subscriber_info(user, host)
 	end
 
 	for row in engine:select(email_query, user, host) do
-		local email = row[1] or row[2];
+		local email;
+		-- NULL is not nil here, so checking length
+		for i= 1, 2 do
+			if row[i] and row[i]:len() > 0 then
+				email = row[i];
+				break;
+			end
+		end
 		if email then
 			info['email'] = email;
-			module:log("debug", string.format("email:%s", row[1]));
+			module:log("debug", "email:", tostring(email));
 		end
 	end
 	return info;
@@ -87,42 +91,44 @@ end
 
 local function generate_vcard(info)
 	local function add(t, name, value)
-		local tmp = {
-			name = name,
-			attr = { xmlns = "vcard-temp" },
-		};
-		if value then table.insert(tmp, value) end
+		local tmp = st.stanza( name,
+			{ xmlns = "vcard-temp" });
+		if value then tmp:text(value) end
 		if t then
-			table.insert(t, tmp);
+			t:add_child(tmp);
 		else
 			return tmp;
 		end
 	end
-	local vCard = {
-		name = "vCard",
-		attr = {
+	local vCard = st.stanza("vCard",
+		{
 			xmlns = "vcard-temp",
 			prodid = "-//HandGen//NONSGML vGen v1.0//EN",
 			version = "2.0"
 		}
-	};
+	);
 	local uri = info["user"] .. '@' .. info["domain"];
-	local t,_,v;
 
-	t = add(nil, "NUMBER", "sip:" .. uri);
-	add(vCard, "TEL", t);
-	t = add(nil, "VIDEO",  "sip:" .. uri);
-	add(vCard, "TEL", t);
+	add(vCard, "JABBERID", uri);
+	local t = add(nil, "TEL")
+	add(t, "VIDEO");
+	add(t, "NUMBER",  "sip:" .. uri);
+	vCard:add_child(t);
 	for _,v in ipairs(info['aliases']) do
-		t = add(nil, "NUMBER", v);
-		add(vCard, "TEL", t);
+		t = add(nil, "TEL");
+		add(t, "VOICE");
+		add(t, "NUMBER", v);
+		vCard:add_child(t);
 	end
 	if info['display_name'] then
 		add(vCard, "FN", info['display_name']);
 	end
 	if info['email'] then
-		t = add(nil, "USERID", info['email']);
-		add(vCard, "EMAIL", t);
+		t = add(nil, "EMAIL");
+		add(t, "INTERNET");
+		add(t, "PREF");
+		add(t, "USERID", info['email']);
+		vCard:add_child(t)
 	end
 	return vCard;
 end
@@ -142,7 +148,6 @@ local function handle_vcard(event)
 		local info = vcard.get_subscriber_info(user, host);
 		local vCard = generate_vcard(info);
 		local reply = st.reply(stanza):add_child(st.deserialize(vCard));
-		--module:log("debug", tostring(reply));
 		session.send(reply);
 	else
 		module:log("debug", "reject setting vcard");
