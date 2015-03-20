@@ -58,7 +58,6 @@ module:add_feature("vcard-temp");
 
 function vcard.get_subscriber_info(user, host)
 	local info = { user = user, domain = host, aliases = {} };
-	local row;
 	-- Reconnect to DB if necessary
 	if not engine.conn:ping() then
 		engine.conn = nil;
@@ -107,12 +106,13 @@ local function generate_vcard(info)
 		}
 	};
 	local uri = info["user"] .. '@' .. info["domain"];
-	local t,_,v;
+	local t,sub;
 
 	t = add(nil, "NUMBER", "sip:" .. uri);
 	add(vCard, "TEL", t);
-	t = add(nil, "VIDEO",  "sip:" .. uri);
-	add(vCard, "TEL", t);
+	sub = add(nil, "NUMBER",  "sip:" .. uri);
+	t = add(nil, "VIDEO")
+	add(vCard, "TEL", {t, sub});
 	for _,v in ipairs(info['aliases']) do
 		t = add(nil, "NUMBER", v);
 		add(vCard, "TEL", t);
