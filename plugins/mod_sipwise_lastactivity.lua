@@ -26,8 +26,8 @@ module:hook("pre-presence/bare", function(event)
 		local s = stanza:child_with_name("status");
 		s = s and #s.tags == 0 and s[1] or "";
 		map[event.origin.username] = {s = s, t = t};
-		module:log("debug", "change of presence:%s from:%s",
-			s, event.origin.username)
+		module:log("debug", string.format("change of presence:%s from:%s",
+			s, event.origin.username))
 	end
 end, 10);
 
@@ -35,7 +35,8 @@ local function msg_handler(event)
 	local origin, stanza = event.origin, event.stanza;
 	local username = jid_split(stanza.attr.from) or origin.username;
 	map[username] = {s = "online", t = os.time()};
-	module:log("debug", "%s from: %s", stanza.attr.type, username);
+	module:log("debug", string.format("%s from: %s",
+		stanza.attr.type, username));
 end
 
 -- lastactivity: any message sent
@@ -59,10 +60,3 @@ module:hook("iq/bare/jabber:iq:last:query", function(event)
 		return true;
 	end
 end);
-
-module.save = function()
-	return {map = map};
-end
-module.restore = function(data)
-	map = data.map or {};
-end
