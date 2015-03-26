@@ -28,8 +28,7 @@ local console_listener = {
 
 local iterators = require "util.iterators";
 local keys, values = iterators.keys, iterators.values;
-local jid = require "util.jid";
-local jid_bare, jid_split = jid.bare, jid.split;
+local jid_bare, jid_split = import("util.jid", "bare", "prepped_split");
 local set, array = require "util.set", require "util.array";
 local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
@@ -167,6 +166,10 @@ function console_listener.ondisconnect(conn, err)
 		session.disconnect();
 		sessions[conn] = nil;
 	end
+end
+
+function console_listener.ondetach(conn)
+	sessions[conn] = nil;
 end
 
 -- Console commands --
@@ -315,6 +318,7 @@ local function human(kb)
 end
 
 function def_env.server:memory()
+	local pposix = require("util.pposix");
 	if not pposix.meminfo then
 		return true, "Lua is using "..collectgarbage("count");
 	end
@@ -948,6 +952,9 @@ end
 
 function def_env.muc:create(room_jid)
 	local room, host = check_muc(room_jid);
+	if not room_name then
+		return room_name, host;
+	end
 	if not room then return nil, host end
 	if hosts[host].modules.muc.rooms[room_jid] then return nil, "Room exists already" end
 	return hosts[host].modules.muc.create_room(room_jid);
@@ -955,6 +962,9 @@ end
 
 function def_env.muc:room(room_jid)
 	local room_name, host = check_muc(room_jid);
+	if not room_name then
+		return room_name, host;
+	end
 	local room_obj = hosts[host].modules.muc.rooms[room_jid];
 	if not room_obj then
 		return nil, "No such room: "..room_jid;
@@ -1058,12 +1068,12 @@ function def_env.dns:lookup(name, typ, class)
 end
 
 function def_env.dns:addnameserver(...)
-	dns.addnameserver(...)
+	dns._resolver:addnameserver(...)
 	return true
 end
 
 function def_env.dns:setnameserver(...)
-	dns.setnameserver(...)
+	dns._resolver:setnameserver(...)
 	return true
 end
 
