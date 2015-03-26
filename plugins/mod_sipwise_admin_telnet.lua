@@ -18,7 +18,6 @@ local _G = _G;
 
 local prosody = _G.prosody;
 local hosts = prosody.hosts;
-local incoming_s2s = prosody.incoming_s2s;
 
 local console_listener = {
 	default_port = module:get_option_number("console_port", 5582);
@@ -28,12 +27,12 @@ local console_listener = {
 
 local iterators = require "util.iterators";
 local keys, values = iterators.keys, iterators.values;
-local jid = require "util.jid";
-local jid_bare, jid_split = jid.bare, jid.split;
+local jid_bare, jid_split = import("util.jid", "bare", "prepped_split");
 local set, array = require "util.set", require "util.array";
 local cert_verify_identity = require "util.x509".verify_identity;
 local envload = require "util.envload".envload;
 local envloadfile = require "util.envload".envloadfile;
+local has_pposix, pposix = pcall(require, "util.pposix");
 
 local commands = module:shared("commands")
 local def_env = module:shared("env");
@@ -161,12 +160,24 @@ function console_listener.onincoming(conn, data)
 	session.partial_data = data:match("[^\n]+$");
 end
 
+function console_listener.onreadtimeout(conn)
+	local session = sessions[conn];
+	if session then
+		session.send("\0");
+		return true;
+	end
+end
+
 function console_listener.ondisconnect(conn, err)
 	local session = sessions[conn];
 	if session then
 		session.disconnect();
 		sessions[conn] = nil;
 	end
+end
+
+function console_listener.ondetach(conn)
+	sessions[conn] = nil;
 end
 
 -- Console commands --
@@ -219,9 +230,11 @@ function commands.help(session, data)
 		print [[c2s:show(jid) - Show all client sessions with the specified JID (or all if no JID given)]]
 		print [[c2s:show_insecure() - Show all unencrypted client connections]]
 		print [[c2s:show_secure() - Show all encrypted client connections]]
+		print [[c2s:show_tls() - Show TLS cipher info for encrypted sessions]]
 		print [[c2s:close(jid) - Close all sessions for the specified JID]]
 	elseif section == "s2s" then
 		print [[s2s:show(domain) - Show all s2s connections for the given domain (or all if no domain given)]]
+		print [[s2s:show_tls(domain) - Show TLS cipher info for encrypted sessions]]
 		print [[s2s:close(from, to) - Close a connection from one domain to another]]
 		print [[s2s:closeall(host) - Close all the incoming/outgoing s2s sessions to specified host]]
 	elseif section == "module" then
@@ -315,7 +328,7 @@ local function human(kb)
 end
 
 function def_env.server:memory()
-	if not pposix.meminfo then
+	if not has_pposix or not pposix.meminfo then
 		return true, "Lua is using "..collectgarbage("count");
 	end
 	local mem, lua_mem = pposix.meminfo(), collectgarbage("count");
@@ -478,15 +491,57 @@ function def_env.config:reload()
 	return ok, (ok and "Config reloaded (you may need to reload modules to take effect)") or tostring(err);
 end
 
-def_env.hosts = {};
-function def_env.hosts:list()
-	for host, host_session in pairs(hosts) do
-		self.session.print(host);
+local function common_info(session, line)
+	if session.id then
+		line[#line+1] = "["..session.id.."]"
+	else
+		line[#line+1] = "["..session.type..(tostring(session):match("%x*$")).."]"
 	end
-	return true, "Done";
 end
 
-function def_env.hosts:add(name)
+local function session_flags(session, line)
+	line = line or {};
+	common_info(session, line);
+	if session.type == "c2s" then
+		local status, priority = "unavailable", tostring(session.priority or "-");
+		if session.presence then
+			status = session.presence:get_child_text("show") or "available";
+		end
+		line[#line+1] = status.."("..priority..")";
+	end
+	if session.cert_identity_status == "valid" then
+		line[#line+1] = "(authenticated)";
+	end
+	if session.secure then
+		line[#line+1] = "(encrypted)";
+	end
+	if session.compressed then
+		line[#line+1] = "(compressed)";
+	end
+	if session.smacks then
+		line[#line+1] = "(sm)";
+	end
+	if session.ip and session.ip:match(":") then
+		line[#line+1] = "(IPv6)";
+	end
+	return table.concat(line, " ");
+end
+
+local function tls_info(session, line)
+	line = line or {};
+	common_info(session, line);
+	if session.secure then
+		local sock = session.conn and session.conn.socket and session.conn:socket();
+		if sock and sock.info then
+			local info = sock:info();
+			line[#line+1] = ("(%s with %s)"):format(info.protocol, info.cipher);
+		else
+			line[#line+1] = "(cipher info unavailable)";
+		end
+	else
+		line[#line+1] = "(insecure)";
+	end
+	return table.concat(line, " ");
 end
 
 def_env.c2s = {};
@@ -512,8 +567,9 @@ function def_env.c2s:count(match_jid)
 	return true, "Total: "..count.." clients";
 end
 
-function def_env.c2s:show(match_jid)
+function def_env.c2s:show(match_jid, annotate)
 	local print, count = self.session.print, 0;
+	annotate = annotate or session_flags;
 	local curr_host;
 	show_c2s(function (jid, session)
 		if curr_host ~= session.host then
@@ -522,16 +578,7 @@ function def_env.c2s:show(match_jid)
 		end
 		if (not match_jid) or jid:match(match_jid) then
 			count = count + 1;
-			local status, priority = "unavailable", tostring(session.priority or "-");
-			if session.presence then
-				status = session.presence:child_with_name("show");
-				if status then
-					status = status:get_text() or "[invalid!]";
-				else
-					status = "available";
-				end
-			end
-			print("   "..jid.." - "..status.."("..priority..")");
+			print(annotate(session, { "  ", jid }));
 		end
 	end);
 	return true, "Total: "..count.." clients";
@@ -570,97 +617,86 @@ function def_env.c2s:close(match_jid)
 	return true, "Total: "..count.." sessions closed";
 end
 
-local function session_flags(session, line)
-	if session.cert_identity_status == "valid" then
-		line[#line+1] = "(secure)";
-	elseif session.secure then
-		line[#line+1] = "(encrypted)";
-	end
-	if session.compressed then
-		line[#line+1] = "(compressed)";
-	end
-	if session.smacks then
-		line[#line+1] = "(sm)";
-	end
-	if session.conn and session.conn:ip():match(":") then
-		line[#line+1] = "(IPv6)";
-	end
-	return table.concat(line, " ");
-end
 
 def_env.s2s = {};
 function def_env.s2s:show(match_jid)
 	local _print = self.session.print;
 	local print = self.session.print;
+	annotate = annotate or session_flags;
 
 	local count_in, count_out = 0,0;
+	local s2s_list = { };
 
-	for host, host_session in pairs(hosts) do
-		print = function (...) _print(host); _print(...); print = _print; end
-		for remotehost, session in pairs(host_session.s2sout) do
-			if (not match_jid) or remotehost:match(match_jid) or host:match(match_jid) then
-				count_out = count_out + 1;
-				print(session_flags(session, {"   ", host, "->", remotehost}));
-				if session.sendq then
-					print("        There are "..#session.sendq.." queued outgoing stanzas for this connection");
-				end
-				if session.type == "s2sout_unauthed" then
-					if session.connecting then
-						print("        Connection not yet established");
-						if not session.srv_hosts then
-							if not session.conn then
-								print("        We do not yet have a DNS answer for this host's SRV records");
-							else
-								print("        This host has no SRV records, using A record instead");
-							end
-						elseif session.srv_choice then
-							print("        We are on SRV record "..session.srv_choice.." of "..#session.srv_hosts);
-							local srv_choice = session.srv_hosts[session.srv_choice];
-							print("        Using "..(srv_choice.target or ".")..":"..(srv_choice.port or 5269));
-						end
-					elseif session.notopen then
-						print("        The <stream> has not yet been opened");
-					elseif not session.dialback_key then
-						print("        Dialback has not been initiated yet");
-					elseif session.dialback_key then
-						print("        Dialback has been requested, but no result received");
-					end
-				end
-			end
+	local s2s_sessions = module:shared"/*/s2s/sessions";
+	for _, session in pairs(s2s_sessions) do
+		local remotehost, localhost, direction;
+		if session.direction == "outgoing" then
+			direction = "->";
+			count_out = count_out + 1;
+			remotehost, localhost = session.to_host or "?", session.from_host or "?";
+		else
+			direction = "<-";
+			count_in = count_in + 1;
+			remotehost, localhost = session.from_host or "?", session.to_host or "?";
 		end
-		local subhost_filter = function (h)
-				return (match_jid and h:match(match_jid));
+		local sess_lines = { l = localhost, r = remotehost,
+			annotate(session, { "", direction, remotehost or "?" })};
+
+		if (not match_jid) or remotehost:match(match_jid) or localhost:match(match_jid) then
+			table.insert(s2s_list, sess_lines);
+			local print = function (s) table.insert(sess_lines, "        "..s); end
+			if session.sendq then
+				print("There are "..#session.sendq.." queued outgoing stanzas for this connection");
 			end
-		for session in pairs(incoming_s2s) do
-			if session.to_host == host and ((not match_jid) or host:match(match_jid)
-				or (session.from_host and session.from_host:match(match_jid))
-				-- Pft! is what I say to list comprehensions
-				or (session.hosts and #array.collect(keys(session.hosts)):filter(subhost_filter)>0)) then
-				count_in = count_in + 1;
-				print(session_flags(session, {"   ", host, "<-", session.from_host or "(unknown)"}));
-				if session.type == "s2sin_unauthed" then
-						print("        Connection not yet authenticated");
+			if session.type == "s2sout_unauthed" then
+				if session.connecting then
+					print("Connection not yet established");
+					if not session.srv_hosts then
+						if not session.conn then
+							print("We do not yet have a DNS answer for this host's SRV records");
+						else
+							print("This host has no SRV records, using A record instead");
+						end
+					elseif session.srv_choice then
+						print("We are on SRV record "..session.srv_choice.." of "..#session.srv_hosts);
+						local srv_choice = session.srv_hosts[session.srv_choice];
+						print("Using "..(srv_choice.target or ".")..":"..(srv_choice.port or 5269));
+					end
+				elseif session.notopen then
+					print("The <stream> has not yet been opened");
+				elseif not session.dialback_key then
+					print("Dialback has not been initiated yet");
+				elseif session.dialback_key then
+					print("Dialback has been requested, but no result received");
 				end
+			end
+			if session.type == "s2sin_unauthed" then
+				print("Connection not yet authenticated");
+			elseif session.type == "s2sin" then
 				for name in pairs(session.hosts) do
 					if name ~= session.from_host then
-						print("        also hosts "..tostring(name));
+						print("also hosts "..tostring(name));
 					end
 				end
 			end
 		end
-
-		print = _print;
 	end
 
-	for session in pairs(incoming_s2s) do
-		if not session.to_host and ((not match_jid) or session.from_host and session.from_host:match(match_jid)) then
-			count_in = count_in + 1;
-			print("Other incoming s2s connections");
-			print("    (unknown) <- "..(session.from_host or "(unknown)"));
-		end
+	-- Sort by local host, then remote host
+	table.sort(s2s_list, function(a,b)
+		if a.l == b.l then return a.r < b.r; end
+		return a.l < b.l;
+	end);
+	local lasthost;
+	for _, sess_lines in ipairs(s2s_list) do
+		if sess_lines.l ~= lasthost then print(sess_lines.l); lasthost=sess_lines.l end
+		for _, line in ipairs(sess_lines) do print(line); end
 	end
-
 	return true, "Total: "..count_out.." outgoing, "..count_in.." incoming connections";
+end
+
+function def_env.s2s:show_tls(match_jid)
+	return self:show(match_jid, tls_info);
 end
 
 local function print_subject(print, subject)
@@ -691,14 +727,9 @@ end
 function def_env.s2s:showcert(domain)
 	local ser = require "util.serialization".serialize;
 	local print = self.session.print;
-	local domain_sessions = set.new(array.collect(keys(incoming_s2s)))
-		/function(session) return session.from_host == domain and session or nil; end;
-	for local_host in values(prosody.hosts) do
-		local s2sout = local_host.s2sout;
-		if s2sout and s2sout[domain] then
-			domain_sessions:add(s2sout[domain]);
-		end
-	end
+	local s2s_sessions = module:shared"/*/s2s/sessions";
+	local domain_sessions = set.new(array.collect(values(s2s_sessions)))
+		/function(session) return (session.to_host == domain or session.from_host == domain) and session or nil; end;
 	local cert_set = {};
 	for session in domain_sessions do
 		local conn = session.conn;
@@ -789,76 +820,38 @@ end
 
 function def_env.s2s:close(from, to)
 	local print, count = self.session.print, 0;
+	local s2s_sessions = module:shared"/*/s2s/sessions";
 
-	if not (from and to) then
+	local match_id;
+	if from and not to then
+		match_id, from = from;
+	elseif not to then
 		return false, "Syntax: s2s:close('from', 'to') - Closes all s2s sessions from 'from' to 'to'";
 	elseif from == to then
 		return false, "Both from and to are the same... you can't do that :)";
 	end
 
-	if hosts[from] and not hosts[to] then
-		-- Is an outgoing connection
-		local session = hosts[from].s2sout[to];
-		if not session then
-			print("No outgoing connection from "..from.." to "..to)
-		else
+	for _, session in pairs(s2s_sessions) do
+		local id = session.type..tostring(session):match("[a-f0-9]+$");
+		if (match_id and match_id == id)
+		or (session.from_host == from and session.to_host == to) then
+			print(("Closing connection from %s to %s [%s]"):format(session.from_host, session.to_host, id));
 			(session.close or s2smanager.destroy_session)(session);
-			count = count + 1;
-			print("Closed outgoing session from "..from.." to "..to);
+			count = count + 1 ;
 		end
-	elseif hosts[to] and not hosts[from] then
-		-- Is an incoming connection
-		for session in pairs(incoming_s2s) do
-			if session.to_host == to and session.from_host == from then
-				(session.close or s2smanager.destroy_session)(session);
-				count = count + 1;
 			end
-		end
-
-		if count == 0 then
-			print("No incoming connections from "..from.." to "..to);
-		else
-			print("Closed "..count.." incoming session"..((count == 1 and "") or "s").." from "..from.." to "..to);
-		end
-	elseif hosts[to] and hosts[from] then
-		return false, "Both of the hostnames you specified are local, there are no s2s sessions to close";
-	else
-		return false, "Neither of the hostnames you specified are being used on this server";
-	end
-
 	return true, "Closed "..count.." s2s session"..((count == 1 and "") or "s");
 end
 
 function def_env.s2s:closeall(host)
         local count = 0;
-
-        if not host or type(host) ~= "string" then return false, "wrong syntax: please use s2s:closeall('hostname.tld')"; end
-        if hosts[host] then
-                for session in pairs(incoming_s2s) do
-                        if session.to_host == host then
-                                (session.close or s2smanager.destroy_session)(session);
+	local s2s_sessions = module:shared"/*/s2s/sessions";
+	for _,session in pairs(s2s_sessions) do
+		if not host or session.from_host == host or session.to_host == host then
+			session:close();
                                 count = count + 1;
                         end
                 end
-                for _, session in pairs(hosts[host].s2sout) do
-                        (session.close or s2smanager.destroy_session)(session);
-                        count = count + 1;
-                end
-        else
-                for session in pairs(incoming_s2s) do
-			if session.from_host == host then
-				(session.close or s2smanager.destroy_session)(session);
-				count = count + 1;
-			end
-		end
-		for _, h in pairs(hosts) do
-			if h.s2sout[host] then
-				(h.s2sout[host].close or s2smanager.destroy_session)(h.s2sout[host]);
-				count = count + 1;
-			end
-		end
-        end
-
 	if count == 0 then return false, "No sessions to close.";
 	else return true, "Closed "..count.." s2s session"..((count == 1 and "") or "s"); end
 end
@@ -875,9 +868,19 @@ end
 function def_env.host:list()
 	local print = self.session.print;
 	local i = 0;
+	local type;
 	for host in values(array.collect(keys(prosody.hosts)):sort()) do
 		i = i + 1;
-		print(host);
+		type = hosts[host].type;
+		if type == "local" then
+			print(host);
+		else
+			type = module:context(host):get_option_string("component_module", type);
+			if type ~= "component" then
+				type = type .. " component";
+			end
+			print(("%s (%s)"):format(host, type));
+		end
 	end
 	return true, i.." hosts";
 end
@@ -948,6 +951,9 @@ end
 
 function def_env.muc:create(room_jid)
 	local room, host = check_muc(room_jid);
+	if not room_name then
+		return room_name, host;
+	end
 	if not room then return nil, host end
 	if hosts[host].modules.muc.rooms[room_jid] then return nil, "Room exists already" end
 	return hosts[host].modules.muc.create_room(room_jid);
@@ -955,11 +961,28 @@ end
 
 function def_env.muc:room(room_jid)
 	local room_name, host = check_muc(room_jid);
-	local room_obj = hosts[host].modules.muc.rooms[room_jid];
+	if not room_name then
+		return room_name, host;
+	end
+	local room_obj = hosts[host].modules.muc.get_room_from_jid(room_jid);
 	if not room_obj then
 		return nil, "No such room: "..room_jid;
 	end
 	return setmetatable({ room = room_obj }, console_room_mt);
+end
+
+function def_env.muc:list(host)
+	local host_session = hosts[host];
+	if not host_session or not host_session.modules.muc then
+		return nil, "Please supply the address of a local MUC component";
+	end
+	local print = self.session.print;
+	local c = 0;
+	for room in host_session.modules.muc.each_room() do
+		print(room.jid);
+		c = c + 1;
+	end
+	return true, c.." rooms";
 end
 
 local um = require"core.usermanager";
@@ -1058,12 +1081,12 @@ function def_env.dns:lookup(name, typ, class)
 end
 
 function def_env.dns:addnameserver(...)
-	dns.addnameserver(...)
+	dns._resolver:addnameserver(...)
 	return true
 end
 
 function def_env.dns:setnameserver(...)
-	dns.setnameserver(...)
+	dns._resolver:setnameserver(...)
 	return true
 end
 
