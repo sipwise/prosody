@@ -58,13 +58,13 @@ module:hook("s2s-stream-features",
 		end);
 
 local function outgoing_stanza_filter(stanza, session)
-	local is_stanza = stanza.attr and not stanza.attr.xmlns;
+	local is_stanza = stanza.attr and not stanza.attr.xmlns and not stanza.name:find":";
 	if is_stanza and not stanza._cached then -- Stanza in default stream namespace
 		local queue = session.outgoing_stanza_queue;
 		local cached_stanza = st.clone(stanza);
 		cached_stanza._cached = true;
 
-		if cached_stanza and cached_stanza:get_child("delay", xmlns_delay) == nil then
+		if cached_stanza and cached_stanza.name ~= "iq" and cached_stanza:get_child("delay", xmlns_delay) == nil then
 			cached_stanza = cached_stanza:tag("delay", { xmlns = xmlns_delay, from = session.host, stamp = datetime.datetime()});
 		end
 
@@ -266,7 +266,7 @@ module:hook("pre-resource-unbind", function (event)
 				-- (for example, the client may have bound a new resource and
 				-- started a new smacks session, or not be using smacks)
 				local curr_session = full_sessions[session.full_jid];
-				if false and session.destroyed then
+				if session.destroyed then
 					session.log("debug", "The session has already been destroyed");
 				elseif curr_session and curr_session.resumption_token == resumption_token
 				-- Check the hibernate time still matches what we think it is,
@@ -315,7 +315,9 @@ function handle_resume(session, stanza, xmlns_sm)
 		original_session.ip = session.ip;
 		original_session.conn = session.conn;
 		original_session.send = session.send;
-		original_session.send.filter = original_session.filter;
+		original_session.filter = session.filter;
+		original_session.send.filter = session.filter;
+		original_session.data.filter = session.filter;
 		original_session.stream = session.stream;
 		original_session.secure = session.secure;
 		original_session.hibernating = nil;
