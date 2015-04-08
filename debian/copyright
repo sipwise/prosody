@@ -11,9 +11,28 @@ License: MIT/X11
 
 Files: plugins/mod_sipwise_vcard_cusax.lua
 Copyright: 2008-2010 Matthew Wild
-           2008-2010 Waqas Hussain
+           2008-2010 Waqas Hussain <waqas20@gmail.com>
            2013 Sipwise GmbH
 License: MIT/X11
+
+Files: plugins/mod_carbons.lua
+Copyright: 2011 Kim Alvefur <zash@zash.se>
+License: MIT/X11
+
+Files: plugins/mod_sipwise_lastactivity.lua
+Copyright: 2008-2010 Matthew Wild
+           2008-2010 Waqas Hussain <waqas20@gmail.com>
+           2015 Sipwise GmbH <development@sipwise.com>
+License: MIT/X11
+
+Files: plugins/mod_log_auth.lua
+Copyright: 2013 Kim Alvefur <zash@zash.se>
+License: MIT/X11
+
+Files: plugins/mod_smacks.lua
+Copyright: 2015 Matthew Wild <mwild1>
+           2015 Kim Alvefur <zash@zash.se>
+Licence: MIT/X11
 
 Files: *
 Copyright: 2013 Sipwise GmbH <development@sipwise.com>
