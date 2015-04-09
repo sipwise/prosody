@@ -19,6 +19,14 @@ Files: plugins/mod_carbons.lua
 Copyright: 2011 Kim Alvefur <zash@zash.se>
 License: MIT/X11
 
+Files: plugins/mod_carbons_copies.lua
+Copyright: 2012 Michael Holzt
+License: MIT/X11
+
+Files: plugins/mod_carbons_adhoc.lua
+Copyright: 2012 Michael Holzt
+License: MIT/X11
+
 Files: plugins/mod_sipwise_lastactivity.lua
 Copyright: 2008-2010 Matthew Wild
            2008-2010 Waqas Hussain <waqas20@gmail.com>
@@ -30,8 +38,11 @@ Copyright: 2013 Kim Alvefur <zash@zash.se>
 License: MIT/X11
 
 Files: plugins/mod_smacks.lua
-Copyright: 2015 Matthew Wild <mwild1>
-           2015 Kim Alvefur <zash@zash.se>
+Copyright: 2010-2015 Matthew Wild
+           2010 Waqas Hussain
+           2012-2015 Kim Alvefur
+           2012 Thijs Alkemade
+           2014 Florian Zeitz
 Licence: MIT/X11
 
 Files: *
