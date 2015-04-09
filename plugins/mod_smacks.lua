@@ -1,3 +1,15 @@
+-- XEP-0198: Stream Management for Prosody IM
+--
+-- Copyright (C) 2010-2015 Matthew Wild
+-- Copyright (C) 2010 Waqas Hussain
+-- Copyright (C) 2012-2015 Kim Alvefur
+-- Copyright (C) 2012 Thijs Alkemade
+-- Copyright (C) 2014 Florian Zeitz
+--
+-- This project is MIT/X11 licensed. Please see the
+-- COPYING file in the source package for more information.
+--
+
 local st = require "util.stanza";
 local uuid_generate = require "util.uuid".generate;
 
