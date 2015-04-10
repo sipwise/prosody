@@ -1,3 +1,13 @@
+ngcp-prosody-modules (1.8.1.2+0~mr3.8.1.2) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [ce78ed2] MT#12267 add mod_carbons and sync mod_smacks
+  * [17eb474] MT#12267 add mod_carbons_* and sync mod_smacks ( license header )
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 10 Apr 2015 11:12:04 +0200
+
 ngcp-prosody-modules (1.8.1.1+0~mr3.8.1.1) unstable; urgency=low
 
   [ Victor Seva ]
