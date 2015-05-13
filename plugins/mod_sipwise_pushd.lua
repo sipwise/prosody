@@ -156,7 +156,8 @@ local function handle_offline(event)
 			caller_jid, jid_bare(caller_jid));
 		query = query .. '&' .. format(
 			"data_sender_number=%s&data_sender_name=%s&data_type=%s&data_message=%s",
-			caller_info.aliases[1], caller_info.display_name, type, msg or message);
+			tostring(caller_info.aliases[1]),
+			tostring(caller_info.display_name), type, msg or message);
 
 		if muc then
 			return query .. '&' .. query_muc;
