@@ -1,3 +1,14 @@
+ngcp-prosody-modules (1.8.2.1+0~mr3.8.2.1) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [2c3d4a1] MT#12267 add mod_carbons and sync mod_smacks
+  * [67c0719] MT#12267 add mod_carbons_* and sync mod_smacks ( license header )
+  * [3c2f990] MT#12953 pushd: fix error when the user is not provided properly
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 03 Jun 2015 16:43:55 +0200
+
 ngcp-prosody-modules (1.8.2.0+0~mr3.8.2.0) unstable; urgency=low
 
   [ Victor Seva ]
