@@ -1,3 +1,17 @@
+ngcp-prosody-modules (1.10.0.0+0~mr4.1.0.0) unstable; urgency=low
+
+  [ Victor Seva ]
+  * [5a87e97] MT#8951 fix vcard format v2 and email
+  * [d55bd7e] MT#11583 lastactivity: fix debug output and remove .save() .restore()
+  * [d08c713] MT#12267 merge changes from 0.9.8
+  * [8447071] MT#12267 add mod_carbons and sync mod_smacks
+  * [e2ae328] MT#12267 add mod_carbons_* and sync mod_smacks ( license header )
+  * [1e3496f] MT#12953 pushd: fix error when the user is not provided properly
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 13 Jul 2015 15:32:17 +0200
+
 ngcp-prosody-modules (1.9.0.0+0~mr4.0.0.0) unstable; urgency=low
 
   [ Victor Seva ]
