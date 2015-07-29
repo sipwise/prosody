@@ -1,5 +1,5 @@
 --
--- Copyright (C) 2014 Sipwise GmbH <development@sipwise.com>
+-- Copyright (C) 2014-2015 Sipwise GmbH <development@sipwise.com>
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
@@ -13,6 +13,7 @@ local format = string.format;
 local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
+local http = require "net.http";
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -48,6 +49,7 @@ WHERE vp.attribute = 'mobile_push_enable'
 ]];
 local engine;
 
+-- luacheck: ignore request
 local function process_response(response, code, request)
 	if code >= 200 and code < 299 then
 		module:log("debug", "pushd response OK[%s] %s",
@@ -59,7 +61,6 @@ local function process_response(response, code, request)
 end
 
 local function push_enable(username, domain)
-	local row
 	-- Reconnect to DB if necessary
 	if not engine.conn:ping() then
 		engine.conn = nil;
@@ -80,7 +81,7 @@ local function push_enable(username, domain)
 	return false;
 end
 
-local function get_caller_info(jid)
+local function get_caller_info(jid, caller_defaults)
 	local node, host = jid_split(jid);
 	local vcard = module:shared(format("/%s/sipwise_vcard_cusax/vcard", host));
 	if vcard then
@@ -108,6 +109,27 @@ local function get_callee_badge(jid)
 	return 0
 end
 
+local function get_message(stanza)
+	local body = stanza:get_child('body');
+	if body then
+		return body:get_text();
+	end
+end
+
+local function get_muc_info(stanza, caller_info)
+	local muc_stanza = stanza:get_child('x', 'jabber:x:conference');
+	local muc = {};
+	if muc_stanza then
+		muc['jid'] = muc_stanza.attr.jid;
+		muc['name'], muc['domain'] = jid_split(muc['jid']);
+		local room = hosts[muc['domain']].modules.muc.rooms[muc['jid']];
+		muc['room'] = room:get_description() or 'Prosody chatroom';
+		muc['invite'] = format("Group chat invitation to '%s' from %s",
+			muc['room'], caller_info.display_name);
+		return muc
+	end
+end
+
 local function handle_offline(event)
 	module:log("debug", "handle_offline");
 	local origin, stanza = event.origin, event.stanza;
@@ -117,83 +139,53 @@ local function handle_offline(event)
 	local caller = { username = 'unknow', host = 'unknown.local' };
 	local caller_defaults = {display_name = '', aliases = {''}};
 	local caller_info;
+	-- defaults to "application/x-www-form-urlencoded"
 	local http_options = {
 		method = "POST",
 		body = "",
 	}
 	local message;
-	local function get_message()
-		local body = stanza:get_child('body');
-		if body then
-			return body:get_text();
-		end
-	end
-	local function get_muc_info()
-		local muc_stanza = stanza:get_child('x', 'jabber:x:conference');
-		local muc = {};
-		if muc_stanza then
-			muc['jid'] = muc_stanza.attr.jid;
-			muc['name'], muc['domain'] = jid_split(muc['jid']);
-			local room = hosts[muc['domain']].modules.muc.rooms[muc['jid']];
-			muc['room'] = room:get_description() or 'Prosody chatroom';
-			muc['invite'] = format("Group chat invitation to '%s' from %s",
-				muc['room'], caller_info.display_name);
-			return muc
-		end
-		return nil
-	end
-	local function build_push_common_query(caller_jid, type, message)
-		local muc = get_muc_info();
-		local query_muc = '';
-		local msg;
-		if muc then
-			query_muc = format("data_room_jid=%s&data_room_description=%s",
-				muc['jid'], muc['room']);
-			msg = muc['invite'];
-		end
-		local query = format("callee=%s&domain=%s", node, host);
-		query = query .. '&' .. format("data_sender_jid=%s&data_sender_sip=%s",
-			caller_jid, jid_bare(caller_jid));
-		query = query .. '&' .. format(
-			"data_sender_number=%s&data_sender_name=%s&data_type=%s&data_message=%s",
-			tostring(caller_info.aliases[1]),
-			tostring(caller_info.display_name), type, msg or message);
 
+	local function build_push_common_query(msg, muc)
 		if muc then
-			return query .. '&' .. query_muc;
+			msg.data_room_jid = muc['jid'];
+			msg.data_room_description = muc['room'];
+			msg.data_message = muc['invite'];
 		end
-		return query;
+		msg.data_sender_number = tostring(caller_info.aliases[1]);
+		msg.data_sender_name = tostring(caller_info.display_name);
+		return msg;
 	end
-	local function build_push_apns_query(type, message)
-		local muc = get_muc_info();
-		local badge = get_callee_badge(to);
-		local msg_header = string.format("message received from %s\n",
-			caller_info.display_name);
-		local msg = msg_header .. message;
-		if muc then
-			msg = muc['invite'];
+	local function build_push_apns_query(msg, muc)
+		if not muc then
+			msg.apns_alert = string.format("message received from %s\n",
+				caller_info.display_name) .. msg.data_message;
 		end
-		local query_apns = format(
-			"apns_sound=%s&apns_badge=%s&apns_alert=%s",
-			pushd_config.msg_sound or '', badge, msg);
-		return http_options.body..'&'..query_apns;
+		msg.apns_sound = pushd_config.msg_sound or '';
+		msg.apns_badge = tostring(get_callee_badge(to));
+		return msg;
 	end
-	local function build_push_query(message)
-		local type = 'message';
+	local function build_push_query(msg)
+		msg.data_type = 'message';
 		local invite = stanza:get_child('x',
 			'http://jabber.org/protocol/muc#user');
 		local caller_jid = format("%s@%s", origin.username or caller.username,
 			origin.host or caller.host);
 		if invite then
-			type = 'invite';
+			msg.data_type = 'invite';
 			caller_jid = jid_bare(invite:get_child('invite').attr.from) or
 				caller_jid;
 		end
-		caller_info = get_caller_info(caller_jid) or caller_defaults;
-		http_options.body = build_push_common_query(caller_jid, type, message);
+		caller_info = get_caller_info(caller_jid, caller_defaults) or
+			caller_defaults;
+		msg.data_sender_jid = caller_jid;
+		msg.data_sender_sip = jid_bare(caller_jid);
+		local muc = get_muc_info(stanza, caller_info);
+		msg = build_push_common_query(msg, muc);
 		if pushd_config.apns then
-			http_options.body = build_push_apns_query(type, message);
+			msg = build_push_apns_query(msg, muc);
 		end
+		return msg;
 	end
 
 	module:log("debug", "stanza[%s]", tostring(stanza));
@@ -204,11 +196,16 @@ local function handle_offline(event)
 
 	if to then
 		node, host = jid_split(to);
-		message = get_message();
-		if message then
+		message = {
+			data_message = get_message(stanza),
+			callee = node,
+			domain = host,
+		};
+		if message.data_message then
 			module:log("debug", "message OK");
 			if push_enable(node, host) then
-				build_push_query(message);
+				message = build_push_query(message);
+				http_options.body = http.formencode(message);
 				if http_options.body then
 					module:log("debug", "Sending http pushd request: %s data: %s",
 						pushd_config.url, http_options.body);
