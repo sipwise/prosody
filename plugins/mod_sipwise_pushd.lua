@@ -14,6 +14,7 @@ local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
 local http = require "net.http";
+local uuid = require "util.uuid";
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -180,6 +181,7 @@ local function handle_offline(event)
 			caller_defaults;
 		msg.data_sender_jid = caller_jid;
 		msg.data_sender_sip = jid_bare(caller_jid);
+		msg.push_id = uuid.generate();
 		local muc = get_muc_info(stanza, caller_info);
 		msg = build_push_common_query(msg, muc);
 		if pushd_config.apns then
