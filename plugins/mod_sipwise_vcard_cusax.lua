@@ -146,9 +146,15 @@ local function handle_vcard(event)
 			host = session.host;
 		end
 		local info = vcard.get_subscriber_info(user, host);
-		local vCard = generate_vcard(info);
-		local reply = st.reply(stanza):add_child(st.deserialize(vCard));
-		session.send(reply);
+		if info and info.user then
+			local vCard = generate_vcard(info);
+			local reply = st.reply(stanza):add_child(st.deserialize(vCard));
+			session.send(reply);
+		else
+			module:log("error", "No info retrieve from stanza: %s",
+				tostring(stanza))
+			session.send(st.error_reply(stanza, "auth", "info not retrieved"));
+		end
 	else
 		module:log("debug", "reject setting vcard");
 		session.send(st.error_reply(stanza, "auth", "forbidden"));
