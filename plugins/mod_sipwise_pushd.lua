@@ -160,6 +160,8 @@ local function handle_offline(event)
 		if not muc then
 			msg.apns_alert = string.format("message received from %s\n",
 				caller_info.display_name) .. msg.data_message;
+		else
+			msg.apns_alert = muc['invite'];
 		end
 		msg.apns_sound = pushd_config.msg_sound or '';
 		msg.apns_badge = tostring(get_callee_badge(to));
