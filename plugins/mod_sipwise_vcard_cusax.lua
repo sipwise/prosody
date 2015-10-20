@@ -41,6 +41,7 @@ SELECT pa.username, pa.is_primary FROM provisioning.voip_dbaliases AS pa
 WHERE ps.username = ? AND pd.domain = ? ORDER BY pa.is_primary DESC;
 ]];
 
+local um_user_exists = require "core.usermanager".user_exists;
 local mod_sql = module:require("sql");
 local params = module:get_option("auth_sql", {
 	driver = "MySQL",
@@ -55,6 +56,9 @@ engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 module:add_feature("vcard-temp");
 
 function vcard.get_subscriber_info(user, host)
+	if not um_user_exists(user, host) then
+		return nil;
+	end
 	local info = { user = user, domain = host, aliases = {} };
 	-- Reconnect to DB if necessary
 	if not engine.conn:ping() then
