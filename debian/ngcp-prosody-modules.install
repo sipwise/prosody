@@ -1,3 +1,2 @@
-core/* /usr/lib/prosody/core/
 plugins/* /usr/lib/prosody/modules/
 util/* /usr/lib/prosody/util/
