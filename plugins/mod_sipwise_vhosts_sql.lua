@@ -1,5 +1,5 @@
 -- Load vhosts from DB on startup of Prosody XMPP server.
--- Copyright (C) 2013 Sipwise GmbH <development@sipwise.com>
+-- Copyright (C) 2013-2015 Sipwise GmbH <development@sipwise.com>
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
@@ -7,7 +7,6 @@
 
 module:set_global();
 
-local log = require "util.logger".init("sipwise_vhosts_sql");
 local DBI = require "DBI"
 local hostmanager = require "core.hostmanager";
 local configmanager = require "core.configmanager";
@@ -38,7 +37,8 @@ local function connect()
 		);
 		prosody.lock_globals();
 		if not dbh then
-			module:log("debug", "Database connection failed: %s", tostring(err));
+			module:log("debug",
+				"Database connection failed: %s", tostring(err));
 			return nil, err;
 		end
 		module:log("debug", "Successfully connected to database");
@@ -50,13 +50,15 @@ end
 
 do -- process options to get a db connection
 	params = params or { driver = "SQLite3" };
-	
+
 	if params.driver == "SQLite3" then
-		params.database = resolve_relative_path(prosody.paths.data or ".", params.database or "prosody.sqlite");
+		params.database = configmanager.resolve_relative_path(
+			prosody.paths.data or ".",
+			params.database or "prosody.sqlite");
 	end
-	
-	assert(params.driver and params.database, "Both the SQL driver and the database need to be specified");
-	
+
+	assert(params.driver and params.database,
+		"Both the SQL driver and the database need to be specified");
 	assert(connect());
 end
 
@@ -68,25 +70,39 @@ local function getsql(sql, ...)
 	-- do prepared statement stuff
 	local stmt, err = connection:prepare(sql);
 	if not stmt and not test_connection() then error("connection failed"); end
-	if not stmt then module:log("error", "QUERY FAILED: %s %s", err, debug.traceback()); return nil, err; end
+	if not stmt then
+		module:log("error", "QUERY FAILED: %s %s", err, debug.traceback());
+		return nil, err;
+	end
 	-- run query
-	local ok, err = stmt:execute(...);
+	local ok
+	ok, err = stmt:execute(...);
 	if not ok and not test_connection() then error("connection failed"); end
 	if not ok then return nil, err; end
-	
+
 	return stmt;
 end
 
 local function load_vhosts_from_db()
-	local stmt, err = getsql("SELECT `domain` FROM `domain`");
+	local stmt, _ = getsql("SELECT `domain` FROM `domain`");
 	local host_config = { enable = true };
 	if stmt then
 		for row in stmt:rows(true) do
-			module:log("debug", "load_vhosts_from_db: activate host %s", row.domain);
+			module:log("debug", "load_vhosts_from_db: activate host %s",
+				row.domain);
 			hostmanager.activate(row.domain, host_config);
-			module:log("debug", "load_vhosts_from_db: activate implicit search.%s", row.domain);
-			hostmanager.activate("search."..row.domain, { component_module = "sipwise_vjud" });
-			configmanager.set("conference."..row.domain, "component_module", "muc");
+
+			module:log("debug",
+				"load_vhosts_from_db: activate implicit search.%s",
+				row.domain);
+			configmanager.set("conference."..row.domain, "component_module",
+				"sipwise_vjud");
+			hostmanager.activate("search."..row.domain);
+
+			configmanager.set("conference."..row.domain, "component_module",
+				"muc");
+			configmanager.set("conference."..row.domain, "modules_enabled",
+				{ "sipwise_redis_mucs" });
 			local conference_config = configmanager.getconfig()["conference."..row.domain];
 			conference_config['restrict_room_creation'] = 'local';
 			hostmanager.activate("conference."..row.domain, conference_config);

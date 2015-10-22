@@ -1,16 +1,17 @@
 --
--- Copyright (C) 2013 Sipwise GmbH <development@sipwise.com>
+-- Copyright (C) 2013-2015 Sipwise GmbH <development@sipwise.com>
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
 --
-local nodeprep = require "util.encodings".stringprep.nodeprep;
-local jid_split = require "util.jid".split;
-local sql = module:require("sql");
+module:set_global();
+
+local ut_jid = require "util.jid";
+local mod_sql = module:require("sql");
 local st = require "util.stanza";
 local template = require "util.template";
-local array = require "util.array";
 local rex = require "rex_pcre";
+local prosodyctl = require "util.prosodyctl"
 
 local get_reply = template[[
   <query xmlns='jabber:iq:search'>
@@ -55,18 +56,16 @@ SELECT username,domain FROM kamailio.dbaliases
 WHERE alias_username=?;
 ]];
 
-local mod_sql = module:require("sql");
 local params = module:get_option("auth_sql", {
-	driver = "MySQL", 
-	database = "provisioning", 
-	username = "prosody", 
-	password = "PW_PROSODY", 
-	host = "localhost" 
+	driver = "MySQL",
+	database = "provisioning",
+	username = "prosody",
+	password = "PW_PROSODY",
+	host = "localhost"
 });
-engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+local engine;
 
-function normalize_number(user, host, number)
+local function normalize_number(user, host, number)
 	local locale_info = {};
 	for row in engine:select(locale_query, user, host) do
 		locale_info["caller_"..row[1]] = row[2];
@@ -89,7 +88,7 @@ function normalize_number(user, host, number)
 			table.insert(replacement_regexes, { patt, repl });
 		end
 	end
-	
+
 	for _, rule in ipairs(replacement_regexes) do
 		local new_number, n_matches = rex.gsub(number, rule[1], rule[2]);
 		if n_matches > 0 then
@@ -100,7 +99,7 @@ function normalize_number(user, host, number)
 	return number;
 end
 
-function search_by_number(number)
+local function search_by_number(number)
 	local results = {};
 	for result in engine:select(lookup_query, number) do
 		table.insert(results, result[1].."@"..result[2]);
@@ -117,7 +116,7 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 	if stanza.attr.type == "get" then
 		return origin.send(st.reply(stanza):add_child(get_reply));
 	else
-		local user, host = jid_split(stanza.attr.from);
+		local user, host = ut_jid.split(stanza.attr.from);
 		local number = stanza.tags[1]:get_child_text("nick");
 
 		-- Reconnect to DB if necessary
@@ -139,7 +138,6 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 end);
 
 function module.command(arg)
-	local jid = require "util.jid";
 	local warn = prosodyctl.show_warning;
 	local command = arg[1];
 	if not command then
@@ -153,7 +151,7 @@ function module.command(arg)
 			return 1;
 		end
 		local user_jid, number = arg[1], arg[2];
-		local user, host = jid.prepped_split(user_jid);
+		local user, host = ut_jid.prepped_split(user_jid);
 		if not (user and host) then
 			warn("Invalid JID: "..user_jid);
 			return 1;
@@ -171,4 +169,16 @@ function module.command(arg)
 		end
 	end
 	return 0;
+end
+
+function module.load()
+	engine = mod_sql:create_engine(params);
+	engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+end
+
+function module.add_host(module)
+	if module:get_host_type() ~= "component" then
+		error("Don't load mod_sipwise_vjud manually,"..
+			" it should be for a component", 0);
+	end
 end
