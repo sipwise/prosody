@@ -1,5 +1,5 @@
 -- Prosody IM
--- Copyright (C) 2014 Sipwise GmbH <development@sipwise.com>
+-- Copyright (C) 2014-2015 Sipwise GmbH <development@sipwise.com>
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
@@ -20,7 +20,7 @@ local redis_sessions = module:shared("redis_sessions");
 
 local function test_connection()
 	if not redis_client then return nil end;
-	local ok, err = pcall(redis_client.ping, redis_client);
+	local ok, _ = pcall(redis_client.ping, redis_client);
 	if not ok then
 		redis_client = nil;
 	end
@@ -49,7 +49,7 @@ local function resource_bind(event)
 end
 
 local function resource_unbind(event)
-	local session, err = event.session, event.error;
+	local session, _ = event.session, event.error;
 	local node, domain, resource = jid.split(session.full_jid);
 	local full_jid, bare_jid = session.full_jid, node.."@"..domain;
 
@@ -67,7 +67,7 @@ local function split_key(key)
 end
 
 function redis_sessions.get_hosts(j)
-	local node, domain, resource = jid.split(j);
+	local node, domain = jid.split(j);
 	local bare_jid = node.."@"..domain;
 	local res = {};
 	local l, h, r;
@@ -86,9 +86,7 @@ function redis_sessions.get_hosts(j)
 end
 
 function module.load()
-	module:log("debug", "load");
 	redis_config = module:get_option("redis_sessions_auth", redis_config);
-	redis_enable = client_connect();
 end
 
 function module.add_host(module)
