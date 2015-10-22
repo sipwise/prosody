@@ -10,7 +10,7 @@ local redis_sessions = module:shared("/*/sipwise_redis_sessions/redis_sessions")
 local jid_split = require "util.jid".split;
 local fire_event = prosody.events.fire_event;
 local st = require "util.stanza";
-
+local uts = require "util.table".string;
 local shard_name = module:get_option("shard_name", nil);
 if not shard_name then
     error("shard_name not configured", 0);
@@ -19,6 +19,27 @@ end
 
 module:log("info", "%s added to shard %s", module.host, shard_name);
 
+
+local function handle_room_event(event)
+    local to = event.stanza.attr.to;
+
+    module:log("debug", "looking up target room shard for %s", to);
+    local rhost = redis_sessions.get_room_host(to);
+
+    if not rhost then
+        module:log("debug", "room not found. Nothing to do");
+        return nil;
+    end
+
+    if rhost == shard_name then
+        module:log("debug", "room is hosted here. Nothing to do");
+        return nil
+    end
+
+    module:log("debug", "target shard for %s is %s", to, rhost);
+    fire_event("shard/send", { shard = rhost, stanza = event.stanza });
+    return true;
+end
 
 local function handle_event (event)
     local to = event.stanza.attr.to;
@@ -30,6 +51,10 @@ local function handle_event (event)
     end
     if host ~= module.host then
         return nil
+    end
+    if uts.starts(host, 'conference.') then
+        module:log("debug", "MUC %s detected", host);
+        return handle_room_event(event);
     end
 
     if resource and prosody.full_sessions[to] then

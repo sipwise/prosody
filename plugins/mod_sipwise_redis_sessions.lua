@@ -1,5 +1,5 @@
 -- Prosody IM
--- Copyright (C) 2014 Sipwise GmbH <development@sipwise.com>
+-- Copyright (C) 2014-2015 Sipwise GmbH <development@sipwise.com>
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
@@ -20,7 +20,7 @@ local redis_sessions = module:shared("redis_sessions");
 
 local function test_connection()
 	if not redis_client then return nil end;
-	local ok, err = pcall(redis_client.ping, redis_client);
+	local ok, _ = pcall(redis_client.ping, redis_client);
 	if not ok then
 		redis_client = nil;
 	end
@@ -49,7 +49,7 @@ local function resource_bind(event)
 end
 
 local function resource_unbind(event)
-	local session, err = event.session, event.error;
+	local session, _ = event.session, event.error;
 	local node, domain, resource = jid.split(session.full_jid);
 	local full_jid, bare_jid = session.full_jid, node.."@"..domain;
 
@@ -61,13 +61,36 @@ local function resource_unbind(event)
 	redis_client:srem(bare_jid, redis_config.server_id..":"..resource);
 end
 
+local function muc_created(room)
+	module:log("debug", "muc-room-created %s", room.jid);
+	module:log("debug", "save [%s]=%s", room.jid, redis_config.server_id);
+	if not test_connection() then client_connect() end
+	redis_client:set(room.jid, redis_config.server_id);
+end
+
+local function muc_destroyed(room)
+	module:log("debug", "muc-room-destroyed %s", room.jid);
+	module:log("debug", "remove [%s]=%s", room.jid, redis_config.server_id);
+	if not test_connection() then client_connect() end
+	redis_client:del(room.jid);
+end
+
 local function split_key(key)
 	local t = ut.string.explode(':', key);
 	return t[1], t[2];
 end
 
+function redis_sessions.get_room_host(room_jid)
+	local node, domain = jid.split(room_jid);
+	local bare_jid = node.."@"..domain;
+
+	module:log("debug", "search room:%s host", bare_jid);
+	if not test_connection() then client_connect() end
+	return redis_client:get(bare_jid);
+end
+
 function redis_sessions.get_hosts(j)
-	local node, domain, resource = jid.split(j);
+	local node, domain = jid.split(j);
 	local bare_jid = node.."@"..domain;
 	local res = {};
 	local l, h, r;
@@ -88,10 +111,11 @@ end
 function module.load()
 	module:log("debug", "load");
 	redis_config = module:get_option("redis_sessions_auth", redis_config);
-	redis_enable = client_connect();
 end
 
 function module.add_host(module)
 	module:hook("resource-bind", resource_bind, 200);
 	module:hook("resource-unbind", resource_unbind, 200);
+	module:hook("muc-room-created", muc_created, 200);
+	module:hook("muc-room-destroyed", muc_destroyed, 200);
 end
