@@ -89,6 +89,7 @@ local function load_vhosts_from_db()
 			configmanager.set("conference."..row.domain, "component_module", "muc");
 			local conference_config = configmanager.getconfig()["conference."..row.domain];
 			conference_config['restrict_room_creation'] = 'local';
+			table.insert(conference_config['modules_enabled'], "sipwise_redis_mucs");
 			hostmanager.activate("conference."..row.domain, conference_config);
 		end
 	end
