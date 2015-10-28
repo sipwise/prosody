@@ -5,6 +5,7 @@
 -- COPYING file in the source package for more information.
 --
 module:set_global();
+local set = require "util.set";
 local ut = require "util.table";
 local jid = require "util.jid";
 local redis = require 'redis';
@@ -13,7 +14,7 @@ local redis_config = {
 	server_id = "0", redis_db = "2"
 };
 local redis_client;
-
+local hosts;
 local redis_mucs = module:shared("redis_mucs");
 
 local function test_connection()
@@ -57,6 +58,24 @@ local function muc_destroyed(event)
     redis_client:srem(host, redis_config.server_id..":"..node);
 end
 
+local function handle_presence(event)
+	local from = event.stanza.attr.from;
+	local node, host, _ = jid.split(from);
+
+	if not hosts:contains(host) then
+		module:log("debug", "stanza not from[%s] known MUC[%s]",
+			tostring(host), tostring(hosts));
+		return nil
+	end
+
+	module:log("debug", "stanza:%s", tostring(event.stanza));
+
+	if not test_connection() then client_connect() end
+	if redis_client:get(node.."@"..host) then
+		module:log("debug", "my stanza:%s", tostring(event.stanza));
+	end
+end
+
 local function split_key(key)
 	local t = ut.string.explode(':', key);
 	return t[1], t[2];
@@ -86,13 +105,21 @@ function redis_mucs.get_room_host(room_jid)
 	return redis_client:get(bare_jid);
 end
 
+function redis_mucs.get_hosts()
+	return hosts;
+end
 
 function module.load()
 	redis_config = module:get_option("redis_sessions_auth", redis_config);
+	hosts = set.new();
 end
 
 function module.add_host(module)
+	local host = module:get_host();
 	module:hook("muc-room-created", muc_created, 200);
 	module:hook("muc-room-destroyed", muc_destroyed, 200);
-	module:log("debug", "hooked at %s", module:get_host());
+	module:hook("presence/full", handle_presence, 200);
+	module:hook("pre-presence/full", handle_presence, 200);
+	hosts:add(host);
+	module:log("debug", "hooked at %s", host);
 end

@@ -60,8 +60,13 @@ local function handle_room_event(event)
     return true;
 end
 
+local function handle_from_room(event)
+    module:log("debug", "stanza[%s]", tostring(event.stanza));
+end
+
 local function handle_event (event)
     local to = event.stanza.attr.to;
+    local from = event.stanza.attr.from;
     local node, host, resource = jid_split(to);
     local stop_process_local;
 
@@ -70,12 +75,18 @@ local function handle_event (event)
         return nil
     end
 
-    if ut.string.starts(host, 'conference.') then
-        if redis_mucs then
-            module:log("debug", "MUC %s detected", host);
+    if redis_mucs then
+        local muc_hosts = redis_mucs.get_hosts();
+        if from then
+            local _, host_from, _ = jid_split(from);
+            if muc_hosts:contains(host_from) then
+                module:log("debug", "from MUC %s detected", host_from);
+                return handle_from_room(event);
+            end
+        end
+        if muc_hosts:contains(host) then
+            module:log("debug", "to MUC %s detected", host);
             return handle_room_event(event);
-        else
-            module:log("debug", "redis_mucs nill");
         end
     end
 
