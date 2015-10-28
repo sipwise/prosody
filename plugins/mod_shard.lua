@@ -6,8 +6,9 @@
 -- COPYING file in the source package for more information.
 --
 module:depends("sipwise_redis_sessions");
+module:depends("sipwise_redis_mucs");
 local redis_sessions = module:shared("/*/sipwise_redis_sessions/redis_sessions");
-local redis_mucs;
+local redis_mucs = module:shared("/*/sipwise_redis_mucs/redis_mucs");
 local jid_split = require "util.jid".split;
 local fire_event = prosody.events.fire_event;
 local st = require "util.stanza";
@@ -70,13 +71,10 @@ local function handle_event (event)
         return nil
     end
 
-    if ut.string.starts(host, 'conference.') then
-        if redis_mucs then
-            module:log("debug", "MUC %s detected", host);
-            return handle_room_event(event);
-        else
-            module:log("debug", "redis_mucs nill");
-        end
+    local muc_hosts = redis_mucs.get_hosts();
+    if muc_hosts:contains(host) then
+        module:log("debug", "to MUC %s detected", host);
+        return handle_room_event(event);
     end
 
     if resource and prosody.full_sessions[to] then
@@ -114,12 +112,6 @@ local function handle_event (event)
     return stop_process_local;
 end
 
-local host = module:get_host();
-if module:get_host_type() == "component" then
-    module:depends("sipwise_redis_mucs");
-    redis_mucs = module:shared("/*/sipwise_redis_mucs/redis_mucs");
-    module:log("debug", "enable MUC for %s", host);
-end
 module:hook("iq/bare", handle_event, 1000);
 module:hook("iq/full", handle_event, 1000);
 module:hook("iq/host", handle_event, 1000);
@@ -129,4 +121,4 @@ module:hook("message/host", handle_event, 1000);
 module:hook("presence/bare", handle_event, 1000);
 module:hook("presence/full", handle_event, 1000);
 module:hook("presence/host", handle_event, 1000);
-module:log("debug", "hooked at %s", host);
+module:log("debug", "hooked at %s", module:get_host());
