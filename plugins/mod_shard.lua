@@ -70,12 +70,11 @@ local function handle_event (event)
         return nil
     end
 
-    if ut.string.starts(host, 'conference.') then
-        if redis_mucs then
-            module:log("debug", "MUC %s detected", host);
+    if redis_mucs then
+        local muc_hosts = redis_mucs.get_hosts();
+        if muc_hosts:contains(host) then
+            module:log("debug", "to MUC %s detected", host);
             return handle_room_event(event);
-        else
-            module:log("debug", "redis_mucs nill");
         end
     end
 
