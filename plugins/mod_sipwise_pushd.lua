@@ -15,6 +15,9 @@ local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
 local http = require "net.http";
 local uuid = require "util.uuid";
+local ut = require "util.table";
+local set = require "util.set";
+local st = require "util.stanza";
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -99,6 +102,59 @@ local function get_caller_info(jid, caller_defaults)
 	end
 end
 
+local function get_members(muc_room)
+	local res = set.new();
+	if muc_room and muc_room._affiliations then
+		for o_jid, _ in pairs(muc_room._affiliations) do
+			res:add(o_jid);
+		end
+	end
+	return res;
+end
+
+local function get_occupants(muc_room)
+	local res = set.new();
+	for _, occupant in pairs(muc_room._occupants) do
+		res:add(jid_bare(occupant.jid));
+	end
+	return res;
+end
+
+local function get_nick(muc_room, occ_jid)
+	if not occ_jid then return nil end
+
+	for nick, occupant in pairs(muc_room._occupants) do
+		if occupant.jid == occ_jid then
+			return nick;
+		end
+	end
+end
+
+local function get_jid_from_nick(muc_room, occ_nick)
+	if not occ_nick then return nil end
+
+	for nick, occupant in pairs(muc_room._occupants) do
+		if  occ_nick == nick then
+			return occupant.jid;
+		end
+	end
+end
+
+local function get_muc_caller(room_jid)
+	local _, host, _ = jid_split(room_jid);
+	local room = hosts[host].muc.rooms[jid_bare(room_jid)];
+	if not room then
+		module:log("warn", "WTF!! %s not here?", jid_bare(room_jid));
+		local rooms = set.new();
+		for r in pairs(hosts[host].muc.rooms) do
+			rooms:add(r);
+		end
+		module:log("debug", "local rooms: %s", tostring(rooms));
+		return nil;
+	end
+	return get_jid_from_nick(room, room_jid);
+end
+
 local function get_callee_badge(jid)
 	local node, host = jid_split(jid);
 	local result = datamanager.list_load(node, host, "offline");
@@ -118,16 +174,26 @@ local function get_message(stanza)
 end
 
 local function get_muc_info(stanza, caller_info)
+	local from = stanza.attr.from;
 	local muc_stanza = stanza:get_child('x', 'jabber:x:conference');
 	local muc = {};
+	local room;
+
 	if muc_stanza then
 		muc['jid'] = muc_stanza.attr.jid;
-		muc['name'], muc['domain'] = jid_split(muc['jid']);
-		local room = hosts[muc['domain']].modules.muc.rooms[muc['jid']];
+	else
+		muc['jid'] = jid_bare(from);
+	end
+	muc['name'], muc['domain'] = jid_split(muc['jid']);
+	module:log("debug", "muc:%s", ut.table.tostring(muc));
+	room = hosts[muc['domain']].modules.muc.rooms[muc['jid']];
+	if room then
 		muc['room'] = room:get_description() or 'Prosody chatroom';
-		muc['invite'] = format("Group chat invitation to '%s' from %s",
-			muc['room'], caller_info.display_name);
-		return muc
+		if muc_stanza then
+			muc['invite'] = format("Group chat invitation to '%s' from %s",
+				muc['room'], caller_info.display_name);
+		end
+		return muc;
 	end
 end
 
@@ -151,7 +217,9 @@ local function handle_offline(event)
 		if muc then
 			msg.data_room_jid = muc['jid'];
 			msg.data_room_description = muc['room'];
-			msg.data_message = muc['invite'];
+			if msg.data_type == 'invite' then
+				msg.data_message = muc['invite'];
+			end
 		end
 		msg.data_sender_number = tostring(caller_info.aliases[1]);
 		msg.data_sender_name = tostring(caller_info.display_name);
@@ -169,22 +237,35 @@ local function handle_offline(event)
 		return msg;
 	end
 	local function build_push_query(msg)
-		msg.data_type = 'message';
-		local invite = stanza:get_child('x',
-			'http://jabber.org/protocol/muc#user');
-		local caller_jid = format("%s@%s", origin.username or caller.username,
-			origin.host or caller.host);
-		if invite then
-			msg.data_type = 'invite';
-			caller_jid = jid_bare(invite:get_child('invite').attr.from) or
-				caller_jid;
+		local muc;
+		local caller_jid;
+		if stanza.attr.type == 'groupchat' then
+			msg.data_type = 'groupchat'
+			caller_jid = get_muc_caller(stanza.attr.from);
+			module:log("debug", "from:%s -> caller_jid:%s",
+				tostring(stanza.attr.from), tostring(caller_jid));
+			caller_info = get_caller_info(caller_jid, caller_defaults) or
+				caller_defaults;
+			muc = get_muc_info(stanza, caller_info);
+		else
+			msg.data_type = 'message';
+			local invite = stanza:get_child('x',
+				'http://jabber.org/protocol/muc#user');
+			caller_jid = format("%s@%s",
+				origin.username or caller.username,
+				origin.host or caller.host);
+			if invite then
+				msg.data_type = 'invite';
+				caller_jid = jid_bare(invite:get_child('invite').attr.from) or
+					caller_jid;
+			end
+			caller_info = get_caller_info(caller_jid, caller_defaults) or
+				caller_defaults;
+			muc = get_muc_info(stanza, caller_info);
 		end
-		caller_info = get_caller_info(caller_jid, caller_defaults) or
-			caller_defaults;
 		msg.data_sender_jid = caller_jid;
 		msg.data_sender_sip = jid_bare(caller_jid);
 		msg.push_id = uuid.generate();
-		local muc = get_muc_info(stanza, caller_info);
 		msg = build_push_common_query(msg, muc);
 		if pushd_config.apns then
 			msg = build_push_apns_query(msg, muc);
@@ -224,6 +305,61 @@ local function handle_offline(event)
 	end
 end
 
+local function fire_offline_message(event, muc_room, off_jid)
+	local stanza_c = st.clone(event.stanza);
+	stanza_c.attr.to = off_jid;
+	stanza_c.attr.from = get_nick(muc_room, stanza_c.attr.from);
+
+	module:log("debug", "stanza[%s] stanza_c[%s]",
+		tostring(event.stanza), tostring(stanza_c));
+	module:fire_event('message/offline/handle', {
+		origin = event.origin,
+		stanza = stanza_c,
+	});
+end
+
+local function handle_muc_offline(event, room_jid)
+	local _, host = jid_split(room_jid);
+	local muc = hosts[host].muc;
+
+	if  muc then
+		local muc_room = hosts[host].muc.rooms[room_jid];
+		if not muc_room then
+			module:log("debug", "muc room[%s] not here. Nothing to do",
+				room_jid);
+			return nil;
+		end
+
+		module:log("debug", "muc_room[%s]: %s", room_jid,
+			ut.table.tostring(muc_room));
+		local muc_members = get_members(muc_room);
+		local muc_occ_online = get_occupants(muc_room);
+		local muc_occ_offline = set.difference(muc_members,muc_occ_online);
+		module:log("debug", "muc_members[%s]", tostring(muc_members));
+		module:log("debug", "muc_occ_online[%s]", tostring(muc_occ_online));
+		module:log("debug", "muc_occ_offline[%s]", tostring(muc_occ_offline));
+		for off_jid in muc_occ_offline do
+			module:log("debug", "fire_offline_message[%s]", off_jid);
+			fire_offline_message(event, muc_room, off_jid);
+		end
+	end
+end
+
+local function handle_msg(event)
+	local stanza = event.stanza;
+	local room_jid = stanza.attr.to;
+
+	if stanza.attr.type ~= 'groupchat' then
+		module:log("debug",
+			"message[%s] not of type groupchat. Nothing to do here",
+			tostring(stanza));
+		return nil;
+	end
+	module:log("debug", "handle_msg room_jid[%s]", tostring(room_jid));
+	return handle_muc_offline(event, room_jid);
+end
+
+module:hook("message/bare", handle_msg, 20);
 module:hook("message/offline/handle", handle_offline, 20);
 
 function module.load()

@@ -7,12 +7,15 @@
 --
 module:depends("sipwise_redis_sessions");
 module:depends("sipwise_redis_mucs");
+
 local redis_sessions = module:shared("/*/sipwise_redis_sessions/redis_sessions");
 local redis_mucs = module:shared("/*/sipwise_redis_mucs/redis_mucs");
+local hosts = prosody.hosts;
 local jid_split = require "util.jid".split;
 local fire_event = prosody.events.fire_event;
 local st = require "util.stanza";
-local ut = require "util.table";
+local set = require "util.set";
+
 local shard_name = module:get_option("shard_name", nil);
 if not shard_name then
     error("shard_name not configured", 0);
@@ -20,13 +23,21 @@ end
 
 module:log("info", "%s added to shard %s", module.host, shard_name);
 
-local function build_query_result(host, rooms, stanza)
+local function build_query_result(rooms, stanza)
     local xmlns = 'http://jabber.org/protocol/disco#items';
     local s = stanza:query(xmlns);
-    for _,v in ipairs(rooms) do
-        s:tag("item", {jid=v.."@"..host}):up();
+    for room in rooms do
+        s:tag("item", {jid=room}):up();
     end
     return stanza;
+end
+
+local function get_local_rooms(host)
+    local rooms = set.new();
+    for room in pairs(hosts[host].muc.rooms) do
+        rooms:add(room);
+    end
+    return rooms;
 end
 
 local function handle_room_event(event)
@@ -35,12 +46,18 @@ local function handle_room_event(event)
     local rhost;
 
     if node then
+        if hosts[host].muc.rooms[node] then
+            module:log("debug", "room[%s] is hosted here. Nothing to do", node);
+            return nil;
+        end
         module:log("debug", "looking up target room shard for %s", to);
         rhost = redis_mucs.get_room_host(to);
     else
-        local l = redis_mucs.get_rooms(host);
-        module:log("debug", "rooms: %s", ut.table.tostring(l));
-        local stanza = build_query_result(host, l, st.reply(event.stanza));
+        -- TODO: remove me this is just for check if there are missing rooms
+        local rooms = set.union(get_local_rooms(host),
+            redis_mucs.get_rooms(host));
+        module:log("debug", "rooms: %s", tostring(rooms));
+        local stanza = build_query_result(rooms, st.reply(event.stanza));
         module:log("debug", "reply[%s]", tostring(stanza));
         event.origin.send(stanza);
         return true;
@@ -56,7 +73,6 @@ local function handle_room_event(event)
         return nil
     end
 
-    module:log("debug", "target shard for %s is %s", to, rhost);
     fire_event("shard/send", { shard = rhost, stanza = event.stanza });
     return true;
 end
@@ -71,8 +87,7 @@ local function handle_event (event)
         return nil
     end
 
-    local muc_hosts = redis_mucs.get_hosts();
-    if muc_hosts:contains(host) then
+    if hosts[host].muc then
         module:log("debug", "to MUC %s detected", host);
         return handle_room_event(event);
     end
@@ -90,8 +105,6 @@ local function handle_event (event)
     if prosody.bare_sessions[to] then
         module:log("debug", "%s has a bare session here."..
             " stanza will be processed here too", to);
-    else
-        stop_process_local = true
     end
 
     module:log("debug", "looking up target shard for %s", to);
@@ -105,6 +118,7 @@ local function handle_event (event)
                 module:log("debug", "target shard for %s is %s",
                     stanza_c.attr.to ,shard);
                 fire_event("shard/send", { shard = shard, stanza = stanza_c });
+                stop_process_local = true;
             end
         end
     end
