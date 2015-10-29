@@ -98,7 +98,7 @@ local function handle_presence(event)
 
 	if not test_connection() then client_connect() end
 	if redis_client:get(muc_host) then
-		module:log("debug", "my stanza:%s", tostring(stanza));
+
 		if stanza.attr.type == 'unavailable' then
 			local muc_user_jid = get_item_jid(stanza) or to;
 			if muc_user_jid then
@@ -144,7 +144,7 @@ end
 
 function redis_mucs.get_online_jids(room_jid)
 	if not test_connection() then client_connect() end
-	return redis_client:smembers(room_jid..":online");
+	return set.new(redis_client:smembers(room_jid..":online"));
 end
 
 function redis_mucs.get_rooms(host)
