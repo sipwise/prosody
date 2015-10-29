@@ -144,7 +144,7 @@ end
 
 function redis_mucs.get_online_jids(room_jid)
 	if not test_connection() then client_connect() end
-	return redis_client:smembers(room_jid..":online");
+	return set.new(redis_client:smembers(room_jid..":online"));
 end
 
 function redis_mucs.get_rooms(host)
