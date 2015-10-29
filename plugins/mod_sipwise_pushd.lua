@@ -6,7 +6,9 @@
 --
 
 module:depends("sipwise_vcard_cusax");
+module:depends("sipwise_redis_mucs");
 
+local redis_mucs = module:shared("/*/sipwise_redis_mucs/redis_mucs");
 local datamanager = require "util.datamanager";
 local mod_sql = module:require("sql");
 local format = string.format;
@@ -15,6 +17,9 @@ local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
 local http = require "net.http";
 local uuid = require "util.uuid";
+local ut = require "util.table";
+local set = require "util.set";
+local st = require "util.stanza";
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -224,6 +229,66 @@ local function handle_offline(event)
 	end
 end
 
+local function get_occupants(muc)
+	local res = set.new();
+	if muc and muc._occupants then
+		for _, o_data in pairs(muc._occupants) do
+			res:add(o_data.jid);
+		end
+	end
+	return res;
+end
+
+local function fire_offline_message(event, off_jid)
+	local stanza_c = st.clone(event.stanza);
+    stanza_c.attr.to = off_jid;
+    module:log("debug", "stanza_c[%s]", tostring(stanza_c));
+	module:fire_event('message/offline/handle', {
+		origin = event.origin,
+		stanza = stanza_c,
+	});
+end
+
+local function handle_muc_offline(event, room_jid)
+	local _, host = jid_split(room_jid);
+	local muc = hosts[host].muc;
+
+	if  muc then
+		local muc_room = hosts[host].muc.rooms[room_jid];
+		if not muc_room then
+			module:log("debug", "muc room[%s] not here. Nothing to do",
+				room_jid);
+			return nil;
+		end
+
+		module:log("debug", "muc_room[%s]: %s", room_jid,
+			ut.table.tostring(muc_room));
+		local muc_occupants = get_occupants(muc_room);
+		local muc_occ_online = redis_mucs.get_online_jids(room_jid);
+		local muc_occ_offline = set.difference(muc_occupants,muc_occ_online);
+		module:log("debug", "muc_occupants[%s]", tostring(muc_occupants));
+		module:log("debug", "muc_occ_online[%s]", tostring(muc_occ_online));
+		module:log("debug", "muc_occ_offline[%s]", tostring(muc_occ_offline));
+		for _,off_jid in pairs() do
+			fire_offline_message(event, off_jid);
+		end
+	end
+end
+
+local function handle_msg(event)
+	local stanza = event.stanza;
+	local room_jid = stanza.attr.to;
+
+	if stanza.attr.type ~= 'groupchat' then
+		module:log("debug",
+			"message not of type groupchat. Nothing to do here");
+		return nil;
+	end
+	module:log("debug", "handle_msg room_jid[%s]", tostring(room_jid));
+	return handle_muc_offline(event, room_jid);
+end
+
+module:hook("message/bare", handle_msg, 20);
 module:hook("message/offline/handle", handle_offline, 20);
 
 function module.load()
