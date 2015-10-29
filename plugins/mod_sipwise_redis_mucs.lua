@@ -126,7 +126,8 @@ local function resource_unbind(event)
 
 	if not test_connection() then client_connect() end
 	for muc_host in hosts do
-		for room in redis_mucs.get_rooms(muc_host) do
+		local rooms = redis_mucs.get_rooms(muc_host);
+		for _,room in pairs(rooms) do
 			local muc_host_key = room..'@'..muc_host..":online";
 			if redis_client:srem(muc_host_key, muc_user_jid) > 0 then
 				module:log("debug", "removed [%s]=>%s",
@@ -158,6 +159,7 @@ function redis_mucs.get_rooms(host)
 		_, r = split_key(v);
 		ut.table.add(res, r);
 	end
+	module:log("debug", "found [%s]", ut.table.tostring(res));
 	return res;
 end
 
