@@ -15,6 +15,9 @@ local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
 local http = require "net.http";
 local uuid = require "util.uuid";
+local ut = require "util.table";
+local set = require "util.set";
+local st = require "util.stanza";
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -224,6 +227,89 @@ local function handle_offline(event)
 	end
 end
 
+local function get_members(muc_room)
+	local res = set.new();
+	if muc_room and muc_room._affiliations then
+		for o_jid, _ in pairs(muc_room._affiliations) do
+			res:add(o_jid);
+		end
+	end
+	return res;
+end
+
+local function get_occupants(muc_room)
+	local res = set.new();
+	for _, occupant in pairs(muc_room._occupants) do
+		res:add(jid_bare(occupant.jid));
+	end
+	return res;
+end
+
+local function get_nick(muc_room, occ_jid)
+	if not occ_jid then return nil end
+	module:log("debug", "search nick for %s", occ_jid);
+	for nick, occupant in pairs(muc_room._occupants) do
+		module:log("debug", "nick[%s] for %s", nick, occupant.jid);
+		if occupant.jid == occ_jid then
+			return nick;
+		end
+	end
+end
+
+local function fire_offline_message(event, muc_room, off_jid)
+	local stanza_c = st.clone(event.stanza);
+	stanza_c.attr.to = off_jid;
+	stanza_c.attr.from = get_nick(muc_room, stanza_c.attr.from);
+
+	module:log("debug", "stanza[%s] stanza_c[%s]",
+		tostring(event.stanza), tostring(stanza_c));
+	module:fire_event('message/offline/handle', {
+		origin = event.origin,
+		stanza = stanza_c,
+	});
+end
+
+local function handle_muc_offline(event, room_jid)
+	local _, host = jid_split(room_jid);
+	local muc = hosts[host].muc;
+
+	if  muc then
+		local muc_room = hosts[host].muc.rooms[room_jid];
+		if not muc_room then
+			module:log("debug", "muc room[%s] not here. Nothing to do",
+				room_jid);
+			return nil;
+		end
+
+		module:log("debug", "muc_room[%s]: %s", room_jid,
+			ut.table.tostring(muc_room));
+		local muc_members = get_members(muc_room);
+		local muc_occ_online = get_occupants(muc_room);
+		local muc_occ_offline = set.difference(muc_members,muc_occ_online);
+		module:log("debug", "muc_members[%s]", tostring(muc_members));
+		module:log("debug", "muc_occ_online[%s]", tostring(muc_occ_online));
+		module:log("debug", "muc_occ_offline[%s]", tostring(muc_occ_offline));
+		for off_jid in muc_occ_offline do
+			module:log("debug", "fire_offline_message[%s]", off_jid);
+			fire_offline_message(event, muc_room, off_jid);
+		end
+	end
+end
+
+local function handle_msg(event)
+	local stanza = event.stanza;
+	local room_jid = stanza.attr.to;
+
+	if stanza.attr.type ~= 'groupchat' then
+		module:log("debug",
+			"message not of type groupchat. Nothing to do here");
+		return nil;
+	end
+	module:log("debug", "handle_msg room_jid[%s]", tostring(room_jid));
+	return handle_muc_offline(event, room_jid);
+end
+
+module:hook("message/bare", handle_msg, 20);
 module:hook("message/offline/handle", handle_offline, 20);
 
 function module.load()
