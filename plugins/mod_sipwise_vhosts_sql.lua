@@ -10,6 +10,7 @@ module:set_global();
 local DBI = require "DBI"
 local hostmanager = require "core.hostmanager";
 local configmanager = require "core.configmanager";
+local ut = require "util.table";
 
 local connection;
 local params = module:get_option("auth_sql", module:get_option("auth_sql"));
@@ -91,7 +92,9 @@ local function load_vhosts_from_db()
 			module:log("debug", "load_vhosts_from_db: activate host %s",
 				row.domain);
 			hostmanager.activate(row.domain, host_config);
-
+			local host_modules = configmanager.get(row.domain, "modules_enabled");
+			module:log("debug", "modules_enabled[%s]: %s", row.domain,
+				ut.table.tostring(host_modules));
 			module:log("debug",
 				"load_vhosts_from_db: activate implicit search.%s",
 				row.domain);
@@ -101,11 +104,22 @@ local function load_vhosts_from_db()
 
 			configmanager.set("conference."..row.domain, "component_module",
 				"muc");
+			local conference_modules = {};
+			if ut.table.contains(host_modules, "shard") then
+				ut.table.add(conference_modules, "sipwise_redis_mucs");
+				ut.table.add(conference_modules, "shard");
+			end
+			if ut.table.contains(host_modules, "sipwise_pushd") then
+				ut.table.add(conference_modules, "sipwise_pushd");
+			end
+			module:log("debug", "conference_modules[%s]: %s", "conference."..row.domain, tostring(host_modules));
 			configmanager.set("conference."..row.domain, "modules_enabled",
-				{ "sipwise_redis_mucs", "shard" });
+				conference_modules);
 			local conference_config = configmanager.getconfig()["conference."..row.domain];
 			conference_config['restrict_room_creation'] = 'local';
 			hostmanager.activate("conference."..row.domain, conference_config);
+			module:log("debug", "modules_enabled[%s]: %s", "conference."..row.domain,
+				ut.table.tostring(conference_config['modules_enabled']));
 		end
 	end
 end

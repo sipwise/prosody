@@ -15,6 +15,7 @@ local redis_config = {
 };
 local redis_client;
 local hosts;
+local prosody_hosts = prosody.hosts;
 local redis_mucs = module:shared("redis_mucs");
 
 local function test_connection()
@@ -70,6 +71,39 @@ local function muc_destroyed(event)
 	end
 end
 
+local function get_occupants(muc)
+	local res = set.new();
+	if muc and muc._occupants then
+		for _, o_data in pairs(muc._occupants) do
+			res:add(o_data.jid);
+		end
+	end
+	return res;
+end
+
+local function test_show_occupants(room_jid)
+	local _, host = jid.split(room_jid);
+	local muc = prosody_hosts[host].muc;
+
+	if  muc then
+		local muc_room = muc.rooms[room_jid];
+		if not muc_room then
+			module:log("debug", "muc room[%s] not here. Nothing to do",
+				room_jid);
+			return nil;
+		else
+			module:log("debug", "muc_room[%s]: %s", room_jid,
+				ut.table.tostring(muc_room));
+			local muc_occupants = get_occupants(muc_room);
+			local muc_occ_online = redis_mucs.get_online_jids(room_jid);
+			local muc_occ_offline = set.difference(muc_occupants,muc_occ_online);
+			module:log("debug", "muc_occupants[%s]", tostring(muc_occupants));
+			module:log("debug", "muc_occ_online[%s]", tostring(muc_occ_online));
+			module:log("debug", "muc_occ_offline[%s]", tostring(muc_occ_offline));
+		end
+	end
+end
+
 local function get_item_jid(stanza)
 	local xmlns = "http://jabber.org/protocol/muc#user";
 	local s = stanza:get_child('x', xmlns);
@@ -91,6 +125,8 @@ local function handle_presence(event)
 		module:log("debug", "stanza from[%s] not in known MUC hosts[%s]",
 			tostring(host), tostring(hosts));
 		return nil
+	else
+		test_show_occupants(from);
 	end
 
 	local muc_host = node.."@"..host;
@@ -98,7 +134,7 @@ local function handle_presence(event)
 
 	if not test_connection() then client_connect() end
 	if redis_client:get(muc_host) then
-		module:log("debug", "my stanza:%s", tostring(stanza));
+
 		if stanza.attr.type == 'unavailable' then
 			local muc_user_jid = get_item_jid(stanza) or to;
 			if muc_user_jid then
@@ -144,7 +180,7 @@ end
 
 function redis_mucs.get_online_jids(room_jid)
 	if not test_connection() then client_connect() end
-	return redis_client:smembers(room_jid..":online");
+	return set.new(redis_client:smembers(room_jid..":online"));
 end
 
 function redis_mucs.get_rooms(host)
