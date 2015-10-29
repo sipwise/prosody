@@ -6,7 +6,9 @@
 --
 
 module:depends("sipwise_vcard_cusax");
+module:depends("sipwise_redis_mucs");
 
+local redis_mucs = module:shared("/*/sipwise_redis_mucs/redis_mucs");
 local datamanager = require "util.datamanager";
 local mod_sql = module:require("sql");
 local format = string.format;
@@ -15,6 +17,8 @@ local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
 local http = require "net.http";
 local uuid = require "util.uuid";
+local ut = require "util.table";
+local set = require "util.set";
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -224,6 +228,43 @@ local function handle_offline(event)
 	end
 end
 
+local function get_occupants(muc)
+	local res = set.new();
+	if muc and muc._occupants then
+		for _, o_data in pairs(muc._occupants) do
+			res:add(o_data.jid);
+		end
+	end
+	return res;
+end
+
+local function handle_muc_offline(event)
+	local stanza = event.stanza;
+	local to = stanza.attr.to;
+	local _, host = jid_split(to);
+
+	if stanza.attr.type ~= 'groupchat' then
+		module:log("debug",
+			"message not of type groupchat. Nothing to do here");
+		return nil;
+	end
+
+	local muc = hosts[host].muc;
+
+	if  muc then
+		local muc_room = hosts[host].muc.rooms[to];
+		module:log("debug", "muc_room[%s]: %s", to,
+			ut.table.tostring(muc_room));
+		local muc_occupants = get_occupants(muc_room);
+		local muc_occ_online = redis_mucs.get_online_jids(to);
+		local muc_occ_offline = set.difference(muc_occupants,muc_occ_online);
+		module:log("debug", "muc_occupants[%s]", tostring(muc_occupants));
+		module:log("debug", "muc_occ_online[%s]", tostring(muc_occ_online));
+		module:log("debug", "muc_occ_offline[%s]", tostring(muc_occ_offline));
+	end
+end
+
+module:hook("pre-message/bare", handle_muc_offline, 20);
 module:hook("message/offline/handle", handle_offline, 20);
 
 function module.load()
