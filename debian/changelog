@@ -1,3 +1,4 @@
+<<<<<<< HEAD   (9738bc MT#15819 mod_sipwise_pushd: set apns_alert message on muc)
 ngcp-prosody-modules (1.10.2.0+0~mr4.1.2.0) unstable; urgency=medium
 
   * New release.
@@ -16,6 +17,20 @@ ngcp-prosody-modules (1.10.1.0+0~mr4.1.1.0) unstable; urgency=medium
   [ Sipwise Jenkins Builder ]
 
  -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 12 Oct 2015 15:43:55 +0200
+=======
+ngcp-prosody-modules (1.11.0.0+0~mr4.2.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [d20b62f] MT#14281 pushd: use formencode() in order to urlencode the http request
+  * [ee207e5] MT#14293 luacheck project config
+  * [be8663b] MT#14921 add uuid push_id parameter
+  * [6abfd0f] MT#15119 sipwise_log_debug module
+  * [f672d8e] MT#15303 add mod_limit_auth
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 12 Oct 2015 15:43:59 +0200
+>>>>>>> BRANCH (7e27db MT#16059 mod_sipwise_vjud: fix load module)
 
 ngcp-prosody-modules (1.10.0.0+0~mr4.1.0.0) unstable; urgency=low
 
