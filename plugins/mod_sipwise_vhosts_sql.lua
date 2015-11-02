@@ -95,12 +95,15 @@ local function load_vhosts_from_db()
 			local host_modules = configmanager.get(row.domain, "modules_enabled");
 			module:log("debug", "modules_enabled[%s]: %s", row.domain,
 				ut.table.tostring(host_modules));
+
 			module:log("debug",
 				"load_vhosts_from_db: activate implicit search.%s",
 				row.domain);
-			configmanager.set("conference."..row.domain, "component_module",
+			configmanager.set("search."..row.domain, "component_module",
 				"sipwise_vjud");
-			hostmanager.activate("search."..row.domain);
+			local search_config = configmanager.getconfig()["search."..row.domain];
+			hostmanager.activate("search."..row.domain, search_config);
+
 
 			configmanager.set("conference."..row.domain, "component_module",
 				"muc");
@@ -112,7 +115,8 @@ local function load_vhosts_from_db()
 			if ut.table.contains(host_modules, "sipwise_pushd") then
 				ut.table.add(conference_modules, "sipwise_pushd");
 			end
-			module:log("debug", "conference_modules[%s]: %s", "conference."..row.domain, tostring(host_modules));
+			module:log("debug", "conference_modules[%s]: %s",
+				"conference."..row.domain, tostring(host_modules));
 			configmanager.set("conference."..row.domain, "modules_enabled",
 				conference_modules);
 			local conference_config = configmanager.getconfig()["conference."..row.domain];
