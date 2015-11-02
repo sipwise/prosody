@@ -41,6 +41,7 @@ SELECT pa.username, pa.is_primary FROM provisioning.voip_dbaliases AS pa
 WHERE ps.username = ? AND pd.domain = ? ORDER BY pa.is_primary DESC;
 ]];
 
+local um_user_exists = require "core.usermanager".user_exists;
 local mod_sql = module:require("sql");
 local params = module:get_option("auth_sql", {
 	driver = "MySQL",
@@ -55,6 +56,9 @@ engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 module:add_feature("vcard-temp");
 
 function vcard.get_subscriber_info(user, host)
+	if not um_user_exists(user, host) then
+		return nil;
+	end
 	local info = { user = user, domain = host, aliases = {} };
 	-- Reconnect to DB if necessary
 	if not engine.conn:ping() then
@@ -145,10 +149,21 @@ local function handle_vcard(event)
 			user = session.username;
 			host = session.host;
 		end
+		if not (user and host) then
+			module:log("error", "bad-request stanza: %s",
+				tostring(stanza))
+			session.send(st.error_reply(stanza, "modify", "jid-malformed"));
+		end
 		local info = vcard.get_subscriber_info(user, host);
-		local vCard = generate_vcard(info);
-		local reply = st.reply(stanza):add_child(st.deserialize(vCard));
-		session.send(reply);
+		if info then
+			local vCard = generate_vcard(info);
+			local reply = st.reply(stanza):add_child(st.deserialize(vCard));
+			session.send(reply);
+		else
+			module:log("error", "No info retrieve from stanza: %s",
+				tostring(stanza))
+			session.send(st.error_reply(stanza, "cancel", "item-not-found"));
+		end
 	else
 		module:log("debug", "reject setting vcard");
 		session.send(st.error_reply(stanza, "auth", "forbidden"));
