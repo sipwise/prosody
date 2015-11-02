@@ -4,6 +4,7 @@
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
 --
+module:depends("disco");
 module:set_global();
 
 local ut_jid = require "util.jid";
@@ -107,36 +108,6 @@ local function search_by_number(number)
 	return results;
 end
 
-module:depends("disco");
-module:add_feature("jabber:iq:search");
-
-module:hook("iq/host/jabber:iq:search:query", function(event)
-	local origin, stanza = event.origin, event.stanza;
-
-	if stanza.attr.type == "get" then
-		return origin.send(st.reply(stanza):add_child(get_reply));
-	else
-		local user, host = ut_jid.split(stanza.attr.from);
-		local number = stanza.tags[1]:get_child_text("nick");
-
-		-- Reconnect to DB if necessary
-		if not engine.conn:ping() then
-			engine.conn = nil;
-			engine:connect();
-		end
-
-		number = normalize_number(user, host, number);
-
-		local reply = st.reply(stanza):query("jabber:iq:search");
-
-		for _, jid in ipairs(search_by_number(number)) do
-			reply:tag("item", { jid = jid }):up();
-		end
-
-		return origin.send(reply);
-	end
-end);
-
 function module.command(arg)
 	local warn = prosodyctl.show_warning;
 	local command = arg[1];
@@ -181,4 +152,33 @@ function module.add_host(module)
 		error("Don't load mod_sipwise_vjud manually,"..
 			" it should be for a component", 0);
 	end
+	module:add_feature("jabber:iq:search");
+	module:hook("iq/host/jabber:iq:search:query", function(event)
+		local origin, stanza = event.origin, event.stanza;
+		module:log("debug", "stanza[%s]", tostring(stanza));
+		if stanza.attr.type == "get" then
+			return origin.send(st.reply(stanza):add_child(get_reply));
+		else
+
+			local user, host = ut_jid.split(stanza.attr.from);
+			local number = stanza.tags[1]:get_child_text("nick");
+
+			-- Reconnect to DB if necessary
+			if not engine.conn:ping() then
+				engine.conn = nil;
+				engine:connect();
+			end
+
+			number = normalize_number(user, host, number);
+
+			local reply = st.reply(stanza):query("jabber:iq:search");
+
+			for _, jid in ipairs(search_by_number(number)) do
+				reply:tag("item", { jid = jid }):up();
+			end
+
+			return origin.send(reply);
+		end
+	end);
+	module:log("debug", "hooked at %s", module:get_host());
 end
