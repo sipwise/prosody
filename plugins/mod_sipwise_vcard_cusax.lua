@@ -15,6 +15,7 @@
 local st = require "util.stanza";
 local jid_split = require "util.jid".split;
 local vcard = module:shared("vcard");
+local hosts = prosody.hosts;
 
 local email_query = [[
 SELECT bc.email, bccc.email FROM billing.voip_subscribers AS vs
@@ -56,6 +57,9 @@ engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 module:add_feature("vcard-temp");
 
 function vcard.get_subscriber_info(user, host)
+	if not hosts[host] or not hosts[host].users then
+		return nil;
+	end
 	if not um_user_exists(user, host) then
 		return nil;
 	end
