@@ -1,3 +1,14 @@
+ngcp-prosody-modules (1.9.3.0+0~mr4.0.3.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [5e52f0d] MT#14281 pushd: use formencode() in order to urlencode the http request
+  * [3e7664d] MT#15119 sipwise_log_debug module
+  * [67be2fb] MT#15303 add mod_limit_auth
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 16 Nov 2015 14:40:32 +0100
+
 ngcp-prosody-modules (1.9.2.0+0~mr4.0.2.0) unstable; urgency=medium
 
   * New release.
