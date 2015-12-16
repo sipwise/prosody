@@ -1,3 +1,22 @@
+ngcp-prosody-modules (1.11.1.0+0~mr4.2.1.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [ff763a7] MT#15837 mod_sipwise_vcard_cusax: add error when no info is retrive
+  * [24c1cc4] MT#15893 mod_sipwise_vcard_cusax: return error if subscriber does not exist
+  * [bbb6f0f] MT#15819 mod_sipwise_pushd: set apns_alert message on muc
+  * [c5f0784] MT#6407 cluster using mod_shard* as base
+  * [babc44f] MT#6407 support MUC on cluster
+  * [320bdef] MT#16059 save MUC participants on redis too
+  * [8243371] MT#16059 mod_sipwise_redis_mucs: fix unbind hook. fixes commit 320bdefb33c
+  * [d346079] MT#16059 mod_sipwise_pushd: support groupchat messages
+  * [a943438] MT#15893 mod_sipwise_vcard_cusax: fix error if domain has no users
+  * [c579c89] MT#16059 mod_sipwise_vhosts_sql: fix load sipwise_vjud component at search domain
+  * [7e27dba] MT#16059 mod_sipwise_vjud: fix load module
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 16 Dec 2015 09:30:21 +0100
+
 ngcp-prosody-modules (1.11.0.0+0~mr4.2.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
