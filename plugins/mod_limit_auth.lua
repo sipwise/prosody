@@ -34,6 +34,7 @@ end
 
 module:hook("stanza/urn:ietf:params:xml:ns:xmpp-sasl:auth", function (event)
 	local origin = event.origin;
+	if origin.type ~= "c2s_unauthed" then return end
 	if not get_throttle(origin.ip):peek(1) then
 		origin.log("warn", "Too many authentication attepmts for ip %s", origin.ip);
 		tarpit_delay();

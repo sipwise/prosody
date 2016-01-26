@@ -31,6 +31,7 @@ local sm3_attr = { xmlns = xmlns_sm3 };
 
 local resume_timeout = module:get_option_number("smacks_hibernation_time", 300);
 local s2s_smacks = module:get_option_boolean("smacks_enabled_s2s", false);
+local s2s_resend = module:get_option_boolean("smacks_s2s_resend", false);
 local max_unacked_stanzas = module:get_option_number("smacks_max_unacked_stanzas", 0);
 local core_process_stanza = prosody.core_process_stanza;
 local sessionmanager = require"core.sessionmanager";
@@ -124,8 +125,8 @@ end
 local function wrap_session_in(session, resume)
 	if not resume then
 		session.handled_stanza_count = 0;
-		add_filter(session, "stanzas/in", count_incoming_stanzas, 1000);
 	end
+	add_filter(session, "stanzas/in", count_incoming_stanzas, 1000);
 
 	return session;
 end
@@ -298,6 +299,25 @@ module:hook("pre-resource-unbind", function (event)
 	end
 end);
 
+local function handle_s2s_destroyed(event)
+	local session = event.session;
+	local queue = session.outgoing_stanza_queue;
+	if queue and #queue > 0 then
+		session.log("warn", "Destroying session with %d unacked stanzas", #queue);
+		if s2s_resend then
+			for i = 1, #queue do
+				module:send(queue[i]);
+			end
+			session.outgoing_stanza_queue = nil;
+		else
+			handle_unacked_stanzas(session);
+		end
+	end
+end
+
+module:hook("s2sout-destroyed", handle_s2s_destroyed);
+module:hook("s2sin-destroyed", handle_s2s_destroyed);
+
 function handle_resume(session, stanza, xmlns_sm)
 	if session.full_jid then
 		session.log("warn", "Tried to resume after resource binding");
@@ -328,8 +348,8 @@ function handle_resume(session, stanza, xmlns_sm)
 		original_session.conn = session.conn;
 		original_session.send = session.send;
 		original_session.filter = session.filter;
-		original_session.send.filter = session.filter;
-		original_session.data.filter = session.filter;
+		original_session.filter.session = original_session;
+		original_session.filters = session.filters;
 		original_session.stream = session.stream;
 		original_session.secure = session.secure;
 		original_session.hibernating = nil;
@@ -365,3 +385,18 @@ function handle_resume(session, stanza, xmlns_sm)
 end
 module:hook_stanza(xmlns_sm2, "resume", function (session, stanza) return handle_resume(session, stanza, xmlns_sm2); end);
 module:hook_stanza(xmlns_sm3, "resume", function (session, stanza) return handle_resume(session, stanza, xmlns_sm3); end);
+
+local function handle_read_timeout(event)
+	local session = event.session;
+	if session.smacks then
+		if session.awaiting_ack then
+			return false; -- Kick the session
+		end
+		(session.sends2s or session.send)(st.stanza("r", { xmlns = session.smacks }));
+		session.awaiting_ack = true;
+		return true;
+	end
+end
+
+module:hook("s2s-read-timeout", handle_read_timeout);
+module:hook("c2s-read-timeout", handle_read_timeout);

@@ -9,14 +9,15 @@ local xmlns_carbons = "urn:xmpp:carbons:2";
 local xmlns_carbons_old = "urn:xmpp:carbons:1";
 local xmlns_carbons_really_old = "urn:xmpp:carbons:0";
 local xmlns_forward = "urn:xmpp:forward:0";
-local full_sessions, bare_sessions = full_sessions, bare_sessions;
+local full_sessions, bare_sessions = prosody.full_sessions, prosody.bare_sessions;
 
 local function toggle_carbons(event)
 	local origin, stanza = event.origin, event.stanza;
 	local state = stanza.tags[1].attr.mode or stanza.tags[1].name;
 	module:log("debug", "%s %sd carbons", origin.full_jid, state);
 	origin.want_carbons = state == "enable" and stanza.tags[1].attr.xmlns;
-	return origin.send(st.reply(stanza));
+	origin.send(st.reply(stanza));
+	return true;
 end
 module:hook("iq-set/self/"..xmlns_carbons..":disable", toggle_carbons);
 module:hook("iq-set/self/"..xmlns_carbons..":enable", toggle_carbons);
@@ -28,14 +29,12 @@ module:hook("iq-set/self/"..xmlns_carbons_really_old..":carbons", toggle_carbons
 
 local function message_handler(event, c2s)
 	local origin, stanza = event.origin, event.stanza;
-	local orig_type = stanza.attr.type;
+	local orig_type = stanza.attr.type or "normal";
 	local orig_from = stanza.attr.from;
 	local orig_to = stanza.attr.to;
 
-	if not (orig_type == nil
-			or orig_type == "normal"
-			or orig_type == "chat") then
-		return -- No carbons for messages of type error or headline
+	if not(orig_type == "chat" or orig_type == "normal" and stanza:get_child("body")) then
+		return -- Only chat type messages
 	end
 
 	-- Stanza sent by a local client
