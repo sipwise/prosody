@@ -10,9 +10,9 @@ Copyright: 2011 Tomasz Sterna <tomek@xiaoka.com>
 License: MIT/X11
 
 Files: plugins/mod_sipwise_vcard_cusax.lua
-Copyright: 2008-2010 Matthew Wild
+Copyright: 2008-2010 Matthew Wild <mwild1@gmail.com>
            2008-2010 Waqas Hussain <waqas20@gmail.com>
-           2013 Sipwise GmbH
+           2013 Sipwise GmbH <development@sipwise.com>
 License: MIT/X11
 
 Files: plugins/mod_carbons.lua
@@ -20,15 +20,17 @@ Copyright: 2011 Kim Alvefur <zash@zash.se>
 License: MIT/X11
 
 Files: plugins/mod_carbons_copies.lua
-Copyright: 2012 Michael Holzt
+Copyright: 2012 Michael Holzt <kju@fqdn.org>
+           2014 Florian Zeitz <florob@babelmonkeys.de>
 License: MIT/X11
 
 Files: plugins/mod_carbons_adhoc.lua
-Copyright: 2012 Michael Holzt
+Copyright: 2012 Michael Holzt <kju@fqdn.org>
+           2014 Florian Zeitz <florob@babelmonkeys.de>
 License: MIT/X11
 
 Files: plugins/mod_sipwise_lastactivity.lua
-Copyright: 2008-2010 Matthew Wild
+Copyright: 2008-2010 Matthew Wild <mwild1@gmail.com>
            2008-2010 Waqas Hussain <waqas20@gmail.com>
            2015 Sipwise GmbH <development@sipwise.com>
 License: MIT/X11
@@ -38,11 +40,19 @@ Copyright: 2013 Kim Alvefur <zash@zash.se>
 License: MIT/X11
 
 Files: plugins/mod_smacks.lua
-Copyright: 2010-2015 Matthew Wild
-           2010 Waqas Hussain
-           2012-2015 Kim Alvefur
-           2012 Thijs Alkemade
-           2014 Florian Zeitz
+Copyright: 2010-2015 Matthew Wild <mwild1@gmail.com>
+           2010 Waqas Hussain <waqas20@gmail.com>
+           2012-2015 Kim Alvefur <zash@zash.se>
+           2012 Thijs Alkemade <thijsalkemade@gmail.com>
+           2014 Florian Zeitz <florob@babelmonkeys.de>
+Licence: MIT/X11
+
+Files: plugins/mod_blocking.lua
+Copyright:  2010-2015 Kim Alvefur <zash@zash.se>
+            2013 Tobias Markmann <tm@ayena.de>
+            2011 Paul Aurich <paul@darkrain42.org>
+            2010 Waqas Hussain <waqas20@gmail.com>
+            2010 Matthew Wild <mwild1@gmail.com>
 Licence: MIT/X11
 
 Files: *
