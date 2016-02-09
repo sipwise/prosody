@@ -1,3 +1,12 @@
+ngcp-prosody-modules (1.10.3.0+0~mr4.1.3.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [9738bc3] MT#15819 mod_sipwise_pushd: set apns_alert message on muc
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 09 Feb 2016 12:23:42 +0100
+
 ngcp-prosody-modules (1.10.2.0+0~mr4.1.2.0) unstable; urgency=medium
 
   * New release.
