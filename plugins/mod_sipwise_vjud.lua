@@ -5,7 +5,6 @@
 -- COPYING file in the source package for more information.
 --
 module:depends("disco");
-module:set_global();
 
 local ut_jid = require "util.jid";
 local mod_sql = module:require("sql");
@@ -64,7 +63,28 @@ local params = module:get_option("auth_sql", {
 	password = "PW_PROSODY",
 	host = "localhost"
 });
-local engine;
+local engine = mod_sql:create_engine(params);
+engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+
+local function get_disco_info(stanza)
+	return st.iq({type='result', id=stanza.attr.id, from=module:get_host(), to=stanza.attr.from}):query("http://jabber.org/protocol/disco#info"):tag("feature", {var="jabber:iq:search"}); -- TODO cache disco reply
+end
+
+local function handle_to_domain(event)
+	local origin, stanza = event.origin, event.stanza;
+	local type = stanza.attr.type;
+	if type == "error" or type == "result" then return; end
+	if stanza.name == "iq" and type == "get" then
+		local xmlns = stanza.tags[1].attr.xmlns;
+		local node = stanza.tags[1].attr.node;
+		if xmlns == "http://jabber.org/protocol/disco#info" and not node then
+			origin.send(get_disco_info(stanza));
+		else
+			origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); -- TODO disco/etc
+		end
+	end
+	return true;
+end
 
 local function normalize_number(user, host, number)
 	local locale_info = {};
@@ -142,43 +162,37 @@ function module.command(arg)
 	return 0;
 end
 
-function module.load()
-	engine = mod_sql:create_engine(params);
-	engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+if module:get_host_type() ~= "component" then
+	error("Don't load mod_sipwise_vjud manually,"..
+		" it should be for a component", 0);
 end
 
-function module.add_host(module)
-	if module:get_host_type() ~= "component" then
-		error("Don't load mod_sipwise_vjud manually,"..
-			" it should be for a component", 0);
-	end
-	module:add_feature("jabber:iq:search");
-	module:hook("iq/host/jabber:iq:search:query", function(event)
-		local origin, stanza = event.origin, event.stanza;
-		module:log("debug", "stanza[%s]", tostring(stanza));
-		if stanza.attr.type == "get" then
-			return origin.send(st.reply(stanza):add_child(get_reply));
-		else
+module:add_feature("jabber:iq:search");
+module:hook("iq/host/jabber:iq:search:query", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	module:log("debug", "stanza[%s]", tostring(stanza));
+	if stanza.attr.type == "get" then
+		return origin.send(st.reply(stanza):add_child(get_reply));
+	else
 
-			local user, host = ut_jid.split(stanza.attr.from);
-			local number = stanza.tags[1]:get_child_text("nick");
+		local user, host = ut_jid.split(stanza.attr.from);
+		local number = stanza.tags[1]:get_child_text("nick");
 
-			-- Reconnect to DB if necessary
-			if not engine.conn:ping() then
-				engine.conn = nil;
-				engine:connect();
-			end
-
-			number = normalize_number(user, host, number);
-
-			local reply = st.reply(stanza):query("jabber:iq:search");
-
-			for _, jid in ipairs(search_by_number(number)) do
-				reply:tag("item", { jid = jid }):up();
-			end
-
-			return origin.send(reply);
+		-- Reconnect to DB if necessary
+		if not engine.conn:ping() then
+			engine.conn = nil;
+			engine:connect();
 		end
-	end);
-	module:log("debug", "hooked at %s", module:get_host());
-end
+
+		number = normalize_number(user, host, number);
+
+		local reply = st.reply(stanza):query("jabber:iq:search");
+
+		for _, jid in ipairs(search_by_number(number)) do
+			reply:tag("item", { jid = jid }):up();
+		end
+
+		return origin.send(reply);
+	end
+end);
+module:hook("iq/host", handle_to_domain, -1);
