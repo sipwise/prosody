@@ -66,26 +66,6 @@ local params = module:get_option("auth_sql", {
 local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
-local function get_disco_info(stanza)
-	return st.iq({type='result', id=stanza.attr.id, from=module:get_host(), to=stanza.attr.from}):query("http://jabber.org/protocol/disco#info"):tag("feature", {var="jabber:iq:search"}); -- TODO cache disco reply
-end
-
-local function handle_to_domain(event)
-	local origin, stanza = event.origin, event.stanza;
-	local type = stanza.attr.type;
-	if type == "error" or type == "result" then return; end
-	if stanza.name == "iq" and type == "get" then
-		local xmlns = stanza.tags[1].attr.xmlns;
-		local node = stanza.tags[1].attr.node;
-		if xmlns == "http://jabber.org/protocol/disco#info" and not node then
-			origin.send(get_disco_info(stanza));
-		else
-			origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); -- TODO disco/etc
-		end
-	end
-	return true;
-end
-
 local function normalize_number(user, host, number)
 	local locale_info = {};
 	for row in engine:select(locale_query, user, host) do
@@ -195,4 +175,3 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 		return origin.send(reply);
 	end
 end);
-module:hook("iq/host", handle_to_domain, -1);
