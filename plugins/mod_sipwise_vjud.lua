@@ -12,10 +12,32 @@ local st = require "util.stanza";
 local template = require "util.template";
 local rex = require "rex_pcre";
 local prosodyctl = require "util.prosodyctl"
+local dataforms_new = require "util.dataforms".new;
+
+local form_layout = dataforms_new{
+  title= 'User Directory Search';
+  instructions = 'Please provide the following information to search for subscribers';
+  {
+    type  = 'text-single',
+    label = 'e164 Phone number',
+    name  = 'e164',
+    required = false,
+  },
+};
 
 local get_reply = template[[
   <query xmlns='jabber:iq:search'>
-    <instructions>Please enter a phone number</instructions>
+    <instructions>Use the enclosed form to search</instructions>
+    <x xmlns='jabber:x:data' type='form'>
+      <title>User Directory Search</title>
+      <instructions>Please provide the following information to search for subscribers</instructions>
+      <field type='hidden' var='FORM_TYPE'>
+        <value>jabber:iq:search</value>
+      </field>
+      <field type='text-single'
+             label='e164 Phone number'
+             var='e164'/>
+    </x>
     <nick/>
   </query>
 ]].apply({});
@@ -148,6 +170,7 @@ if module:get_host_type() ~= "component" then
 end
 
 module:add_feature("jabber:iq:search");
+module:add_feature("jabber:x:data"); -- dataforms
 module:hook("iq/host/jabber:iq:search:query", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	module:log("debug", "stanza[%s]", tostring(stanza));
@@ -156,20 +179,39 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 	else
 
 		local user, host = ut_jid.split(stanza.attr.from);
-		local number = stanza.tags[1]:get_child_text("nick");
+		local query = stanza:get_child("query",'jabber:iq:search');
+		local form_stanza = query:get_child("x",'jabber:x:data');
+		local reply;
+		local search_number = stanza.tags[1]:get_child_text("nick");
 
-		-- Reconnect to DB if necessary
-		if not engine.conn:ping() then
-			engine.conn = nil;
-			engine:connect();
+		if form_stanza then
+			local form_data, form_errors = form_layout:data(form_stanza);
+			if form_errors and form_errors['e164'] then
+				reply = st.error_reply(stanza, "modify",
+					"bad-request", "e164: "..form_errors['e164']);
+				return origin.send(reply);
+			else
+				search_number = form_data['e164'] or search_number;
+			end
 		end
 
-		number = normalize_number(user, host, number);
+		if search_number then
+			-- Reconnect to DB if necessary
+			if not engine.conn:ping() then
+				engine.conn = nil;
+				engine:connect();
+			end
 
-		local reply = st.reply(stanza):query("jabber:iq:search");
+			local number = normalize_number(user, host, search_number);
+			reply = st.reply(stanza):query("jabber:iq:search");
 
-		for _, jid in ipairs(search_by_number(number)) do
-			reply:tag("item", { jid = jid }):up();
+
+			for _, jid in ipairs(search_by_number(number)) do
+				reply:tag("item", { jid = jid }):up();
+			end
+		else
+			reply = st.error_reply(stanza, "modify",
+					"bad-request", "no nick or e164 field found");
 		end
 
 		return origin.send(reply);
