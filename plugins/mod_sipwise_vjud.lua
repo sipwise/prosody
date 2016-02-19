@@ -12,11 +12,32 @@ local st = require "util.stanza";
 local template = require "util.template";
 local rex = require "rex_pcre";
 local prosodyctl = require "util.prosodyctl"
+local dataforms_new = require "util.dataforms".new;
+
+local form_layout = dataforms_new{
+  title= 'User Directory Search';
+  instructions = 'Please provide the following information to search for subscribers';
+  {
+    type  = 'text-single',
+    label = 'e164 Phone number',
+    name  = 'e164',
+    required = true,
+  },
+};
 
 local get_reply = template[[
   <query xmlns='jabber:iq:search'>
-    <instructions>Please enter a phone number</instructions>
-    <nick/>
+    <instructions>Use the enclosed form to search</instructions>
+    <x xmlns='jabber:x:data' type='form'>
+      <title>User Directory Search</title>
+      <instructions>Please provide the following information to search for subscribers</instructions>
+      <field type='hidden' var='FORM_TYPE'>
+        <value>jabber:iq:search</value>
+      </field>
+      <field type='text-single'
+             label='e164 Phone number'
+             var='e164'/>
+    </x>
   </query>
 ]].apply({});
 
@@ -65,26 +86,6 @@ local params = module:get_option("auth_sql", {
 });
 local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
-
-local function get_disco_info(stanza)
-	return st.iq({type='result', id=stanza.attr.id, from=module:get_host(), to=stanza.attr.from}):query("http://jabber.org/protocol/disco#info"):tag("feature", {var="jabber:iq:search"}); -- TODO cache disco reply
-end
-
-local function handle_to_domain(event)
-	local origin, stanza = event.origin, event.stanza;
-	local type = stanza.attr.type;
-	if type == "error" or type == "result" then return; end
-	if stanza.name == "iq" and type == "get" then
-		local xmlns = stanza.tags[1].attr.xmlns;
-		local node = stanza.tags[1].attr.node;
-		if xmlns == "http://jabber.org/protocol/disco#info" and not node then
-			origin.send(get_disco_info(stanza));
-		else
-			origin.send(st.error_reply(stanza, "cancel", "service-unavailable")); -- TODO disco/etc
-		end
-	end
-	return true;
-end
 
 local function normalize_number(user, host, number)
 	local locale_info = {};
@@ -168,6 +169,7 @@ if module:get_host_type() ~= "component" then
 end
 
 module:add_feature("jabber:iq:search");
+module:add_feature("jabber:x:data"); -- dataforms
 module:hook("iq/host/jabber:iq:search:query", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	module:log("debug", "stanza[%s]", tostring(stanza));
@@ -176,23 +178,27 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 	else
 
 		local user, host = ut_jid.split(stanza.attr.from);
-		local number = stanza.tags[1]:get_child_text("nick");
+		local query = stanza:get_child("query",'jabber:iq:search');
+		local form_data, form_errors = form_layout:data(query:get_child("x",'jabber:x:data'));
+		local reply;
 
-		-- Reconnect to DB if necessary
-		if not engine.conn:ping() then
-			engine.conn = nil;
-			engine:connect();
+		if form_errors and form_errors['e164'] then
+			reply = st.error_reply(stanza, "modify", "bad-request", "e164: "..form_errors['e164']);
+		else
+			-- Reconnect to DB if necessary
+			if not engine.conn:ping() then
+				engine.conn = nil;
+				engine:connect();
+			end
+
+			local number = normalize_number(user, host, form_data['e164']);
+			reply = st.reply(stanza):query("jabber:iq:search");
+
+
+			for _, jid in ipairs(search_by_number(number)) do
+				reply:tag("item", { jid = jid }):up();
+			end
 		end
-
-		number = normalize_number(user, host, number);
-
-		local reply = st.reply(stanza):query("jabber:iq:search");
-
-		for _, jid in ipairs(search_by_number(number)) do
-			reply:tag("item", { jid = jid }):up();
-		end
-
 		return origin.send(reply);
 	end
 end);
-module:hook("iq/host", handle_to_domain, -1);
