@@ -1,3 +1,19 @@
+ngcp-prosody-modules (1.13.0.0+0~mr4.4.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [dad9a2c] MT#17545 upgrade community modules
+  * [9474448] MT#17541 support XEP-191 mod_blocking
+  * [c122e4e] MT#18041 mod_sipwise_vjud: fix discovery
+  * [f6031ab] MT#18041 mod_sipwise_vjud: fix discovery, clean code
+  * [32cbf31] MT#18055 mod_sipwise_vjud: use dataforms for searching e164 values
+
+  [ Michael Prokop ]
+  * [aa5ffbc] MT#17699 Bump Standards-Version to 3.9.7
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 21 Mar 2016 22:29:16 +0100
+
 ngcp-prosody-modules (1.12.0.0+0~mr4.3.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
