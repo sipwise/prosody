@@ -106,9 +106,19 @@ local params = module:get_option("auth_sql", module:get_option("auth_sql"));
 local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
+-- Reconnect to DB if necessary
+local function reconect_check()
+	if not engine.conn:ping() then
+		engine.conn = nil;
+		module:log("debug", "DDBB reconecting");
+		engine:connect();
+	end
+end
+
 -- returns the attribute_id of 'shared_buddylist_visiblility' preference
 local function lookup_buddy_id()
 	local res, row;
+	reconect_check();
 	res = engine:select(lookupt_preference_id_query,
 		'shared_buddylist_visibility');
 	for row in res do
@@ -121,6 +131,7 @@ local buddylist_preference_id = lookup_buddy_id();
 -- returns the attribute_id of 'display_name' preference
 local function lookup_displayname_id()
 	local res, row;
+	reconect_check();
 	res = engine:select(lookupt_preference_id_query,
 		'display_name');
 	for row in res do
@@ -136,15 +147,6 @@ function inject_roster_contacts(username, host, roster)
 	module:log("debug", "Injecting group members to roster");
 	local bare_jid = username.."@"..host;
 	local account_id, groups, display_names;
-
-	-- Reconnect to DB if necessary
-	local function reconect_check()
-		if not engine.conn:ping() then
-			engine.conn = nil;
-			module:log("debug", "DDBB reconecting");
-			engine:connect();
-		end
-	end
 
 	-- returns the account_id of username@host subscriber
 	local function lookup_account_id()
