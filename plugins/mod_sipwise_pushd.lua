@@ -6,6 +6,7 @@
 --
 
 module:depends("sipwise_vcard_cusax");
+module:depends("sipwise_pushd_blocking");
 
 local datamanager = require "util.datamanager";
 local mod_sql = module:require("sql");
@@ -18,6 +19,8 @@ local uuid = require "util.uuid";
 local ut = require "util.table";
 local set = require "util.set";
 local st = require "util.stanza";
+
+local pushd_blocking = module:shared("/*/sipwise_pushd_blocking/pushd_blocking");
 
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -202,6 +205,16 @@ local function get_muc_info(stanza, caller_info)
 	end
 end
 
+local function is_pushd_blocked(from, to)
+	local node, host = jid_split(to);
+	local blocked_list = pushd_blocking.get_blocked_jids(node, host);
+
+	if ut.table.contains(blocked_list, from) then
+		return true;
+	end
+	return false;
+end
+
 local function handle_offline(event)
 	module:log("debug", "handle_offline");
 	local origin, stanza = event.origin, event.stanza;
@@ -286,6 +299,10 @@ local function handle_offline(event)
 
 	if to then
 		node, host = jid_split(to);
+		if from and is_pushd_blocked(from, to) then
+			module:log("debug", "skip pushd message from blocked jid [%s]", from);
+			return nil;
+		end
 		message = {
 			data_message = get_message(stanza),
 			callee = node,
@@ -318,10 +335,16 @@ local function fire_offline_message(event, muc_room, off_jid)
 
 	module:log("debug", "stanza[%s] stanza_c[%s]",
 		tostring(event.stanza), tostring(stanza_c));
-	module:fire_event('message/offline/handle', {
-		origin = event.origin,
-		stanza = stanza_c,
-	});
+
+	if is_pushd_blocked(stanza_c.attr.from, stanza_c.attr.to) then
+		module:log("debug", "skip pushd message from blocked jid [%s]",
+			stanza_c.attr.from);
+	else
+		module:fire_event('message/offline/handle', {
+			origin = event.origin,
+			stanza = stanza_c,
+		});
+	end
 end
 
 local function handle_muc_offline(event, room_jid)
