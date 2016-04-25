@@ -1,3 +1,14 @@
+ngcp-prosody-modules (1.11.3.0+0~mr4.2.3.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [e081e99] MT#18041 mod_sipwise_vjud: fix discovery
+  * [4a6cc78] MT#18041 mod_sipwise_vjud: fix discovery, clean code
+  * [5d0589d] MT#18725 mod_sipwise_groups: reconnect_check for lookup functions
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 25 Apr 2016 09:30:29 +0200
+
 ngcp-prosody-modules (1.11.2.0+0~mr4.2.2.0) unstable; urgency=medium
 
   * New release.
