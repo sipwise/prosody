@@ -1,3 +1,13 @@
+ngcp-prosody-modules (1.13.1.0+0~mr4.4.1.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [5181464] MT#18725 mod_sipwise_groups: reconnect_check for lookup functions
+  * [b83138c] MT#18905 support pushd_blocking
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 23 May 2016 19:00:16 +0200
+
 ngcp-prosody-modules (1.13.0.0+0~mr4.4.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
