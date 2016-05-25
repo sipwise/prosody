@@ -98,6 +98,7 @@ local function normalize_number(user, host, number)
 	local usr_pref = 0;
 	for row in engine:select(usr_replacements_query, user, host) do
 		usr_pref = 1;
+		module:log("debug", "user rewrite_callee_in_dpid preference found");
 		local patt, repl = row[1], row[2]
 			:gsub("%$avp%(s:([a-zA-Z_]+)%)", locale_info)
 			:gsub("\\", "%%"):gsub("%%%%", "\\");
@@ -105,6 +106,7 @@ local function normalize_number(user, host, number)
 	end
 	if usr_pref == 0 then
 		for row in engine:select(dom_replacements_query, host) do
+			module:log("debug", "domain rewrite_callee_in_dpid preference found");
 			local patt, repl = row[1], row[2]
 				:gsub("%$avp%(s:([a-zA-Z_]+)%)", locale_info)
 				:gsub("\\", "%%"):gsub("%%%%", "\\");
@@ -115,6 +117,8 @@ local function normalize_number(user, host, number)
 	for _, rule in ipairs(replacement_regexes) do
 		local new_number, n_matches = rex.gsub(number, rule[1], rule[2]);
 		if n_matches > 0 then
+			module:log("debug", "rule [%s] matched [%s]->[%s]",
+				tostring(rule[1]), tostring(number), tostring(new_number));
 			number = new_number;
 			break;
 		end
@@ -124,6 +128,7 @@ end
 
 local function search_by_number(number)
 	local results = {};
+	module:log("debug", "search jids with number:[%s]", tostring(number));
 	for result in engine:select(lookup_query, number) do
 		table.insert(results, result[1].."@"..result[2]);
 	end
