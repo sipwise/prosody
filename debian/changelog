@@ -1,3 +1,13 @@
+ngcp-prosody-modules (1.13.1.1+0~mr4.4.1.1) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [51b8c02] MT#20021 mod_sipwise_vjud: add some debug messages related to normalize_number and search_by_number
+  * [3b83727] Revert "MT#18055 mod_sipwise_vjud: use dataforms for searching e164 values"
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 06 Jun 2016 23:11:53 +0200
+
 ngcp-prosody-modules (1.13.1.0+0~mr4.4.1.0) unstable; urgency=medium
 
   [ Victor Seva ]
