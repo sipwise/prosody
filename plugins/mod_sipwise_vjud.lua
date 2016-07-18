@@ -13,6 +13,9 @@ local template = require "util.template";
 local rex = require "rex_pcre";
 local prosodyctl = require "util.prosodyctl"
 local dataforms_new = require "util.dataforms".new;
+local ut = require "util.table";
+local hosts = prosody.hosts;
+
 
 local form_layout = dataforms_new{
   title= 'User Directory Search';
@@ -21,6 +24,12 @@ local form_layout = dataforms_new{
     type  = 'text-single',
     label = 'e164 Phone number',
     name  = 'e164',
+    required = false,
+  },
+  {
+    type  = 'text-single',
+    label = 'domain',
+    name  = 'domain',
     required = false,
   },
 };
@@ -37,6 +46,9 @@ local get_reply = template[[
       <field type='text-single'
              label='e164 Phone number'
              var='e164'/>
+      <field type='text-single'
+             label='domain'
+             var='domain'/>
     </x>
     <nick/>
   </query>
@@ -135,6 +147,18 @@ local function search_by_number(number)
 	return results;
 end
 
+local function search_domains(dom)
+	local hosts_keys = ut.table.keys(hosts);
+
+	module:log("debug", "search for domain: %s", tostring(dom));
+	if dom == '*' then
+		return hosts_keys;
+	elseif ut.table.contains(hosts_keys, dom) then
+		return {dom,};
+	end
+	return {};
+end
+
 function module.command(arg)
 	local warn = prosodyctl.show_warning;
 	local command = arg[1];
@@ -188,6 +212,7 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 		local form_stanza = query:get_child("x",'jabber:x:data');
 		local reply;
 		local search_number = stanza.tags[1]:get_child_text("nick");
+		local search_domain
 
 		if form_stanza then
 			local form_data, form_errors = form_layout:data(form_stanza);
@@ -197,6 +222,7 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 				return origin.send(reply);
 			else
 				search_number = form_data['e164'] or search_number;
+				search_domain = form_data['domain'];
 			end
 		end
 
@@ -214,9 +240,15 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 			for _, jid in ipairs(search_by_number(number)) do
 				reply:tag("item", { jid = jid }):up();
 			end
+		elseif search_domain then
+			reply = st.reply(stanza):query("jabber:iq:search");
+
+			for _, dom in ipairs(search_domains(search_domain)) do
+				reply:tag("item", { domain = dom }):up();
+			end
 		else
 			reply = st.error_reply(stanza, "modify",
-					"bad-request", "no nick or e164 field found");
+					"bad-request", "no domain, nick or e164 field found");
 		end
 
 		return origin.send(reply);
