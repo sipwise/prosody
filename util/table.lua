@@ -21,30 +21,31 @@
 
 local type = type;
 local string = string;
-local t_insert, t_concat, t_remove, t_sort = table.insert, table.concat, table.remove, table.sort;
+local t_insert, t_concat = table.insert, table.concat;
+local table = table;
 
 -- copy a table
 function table.deepcopy(object)
     local lookup_table = {}
-    local function _copy(object)
-        if type(object) ~= "table" then
+    local function _copy(obj)
+        if type(obj) ~= "table" then
             return object
-        elseif lookup_table[object] then
-            return lookup_table[object]
+        elseif lookup_table[obj] then
+            return lookup_table[obj]
         end
         local new_table = {}
         lookup_table[object] = new_table
-        for index, value in pairs(object) do
+        for index, value in pairs(obj) do
             new_table[_copy(index)] = _copy(value)
         end
-        return setmetatable(new_table, getmetatable(object))
+        return setmetatable(new_table, getmetatable(obj))
     end
     return _copy(object)
 end
 
-function table.contains(table, element)
-    if table then
-      for _, value in pairs(table) do
+function table.contains(tbl, element)
+    if tbl then
+      for _, value in pairs(tbl) do
         if value == element then
           return true
         end
@@ -113,11 +114,22 @@ function table.implode(delimiter, list, quoter)
     if not quoter then
         quoter = ""
     end
-    local string = quoter .. list[1] .. quoter
+    local str = quoter .. list[1] .. quoter
     for i = 2, len do
-        string = string .. delimiter .. quoter .. list[i] .. quoter
+        str = str .. delimiter .. quoter .. list[i] .. quoter
     end
     return string
+end
+
+function table.keys(tbl)
+  local keys = {}
+  local n = 0
+
+  for k,_ in pairs(tbl) do
+    n = n+1
+    keys[n] = k
+  end
+  return keys
 end
 
 -- from string to table
