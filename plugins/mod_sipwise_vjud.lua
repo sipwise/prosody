@@ -34,7 +34,44 @@ local form_layout = dataforms_new{
   },
 };
 
-local get_reply = template[[
+local form_item = template[[
+      <item>
+        <field var='{name}'>
+          <value>{value}</value>
+        </field>
+      </item>
+]];
+
+local form_reply = {
+	domain = template[[
+  <query xmlns='jabber:iq:search'>
+    <x xmlns='jabber:x:data' type='result'>
+      <field type='hidden' var='FORM_TYPE'>
+        <value>jabber:iq:search</value>
+      </field>
+      <reported>
+        <field type='text-single'
+             label='domain'
+             var='domain'/>
+      </reported>
+    </x>
+  </query>
+]],
+	e164 = template[[
+  <query xmlns='jabber:iq:search'>
+    <x xmlns='jabber:x:data' type='result'>
+      <field type='hidden' var='FORM_TYPE'>
+        <value>jabber:iq:search</value>
+      </field>
+      <reported>
+        <field type='text-single'
+             label='e164 Phone number'
+             var='e164'/>
+      </reported>
+    </x>
+  </query>
+]],
+  form = template[[
   <query xmlns='jabber:iq:search'>
     <instructions>Use the enclosed form to search</instructions>
     <x xmlns='jabber:x:data' type='form'>
@@ -52,7 +89,8 @@ local get_reply = template[[
     </x>
     <nick/>
   </query>
-]].apply({});
+]]
+};
 
 local usr_replacements_query = [[
 SELECT vrr.match_pattern, vrr.replace_pattern FROM provisioning.voip_preferences vp
@@ -147,16 +185,26 @@ local function search_by_number(number)
 	return results;
 end
 
+local function get_dataform_items(vals, fieldname)
+	local res = {};
+
+	for _,v in ipairs(vals) do
+		table.insert(res, form_item.apply({ name = fieldname, value = v }));
+	end
+	return res;
+end
+
 local function search_domains(dom)
 	local hosts_keys = ut.table.keys(hosts);
+	local res = {};
 
 	module:log("debug", "search for domain: %s", tostring(dom));
 	if dom == '*' then
-		return hosts_keys;
+		res = get_dataform_items(hosts_keys, 'domain');
 	elseif ut.table.contains(hosts_keys, dom) then
-		return {dom,};
+		res = get_dataform_items({dom,}, 'domain');
 	end
-	return {};
+	return res;
 end
 
 function module.command(arg)
@@ -193,6 +241,14 @@ function module.command(arg)
 	return 0;
 end
 
+local function append_x_items(form, values, reply)
+	local x = form:get_child('x', 'jabber:x:data');
+	for _, v in ipairs(values) do
+		x:add_child(v):up();
+	end
+	reply:add_child(x);
+end
+
 if module:get_host_type() ~= "component" then
 	error("Don't load mod_sipwise_vjud manually,"..
 		" it should be for a component", 0);
@@ -204,7 +260,7 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	module:log("debug", "stanza[%s]", tostring(stanza));
 	if stanza.attr.type == "get" then
-		return origin.send(st.reply(stanza):add_child(get_reply));
+		return origin.send(st.reply(stanza):add_child(form_reply.form.apply({})));
 	else
 
 		local user, host = ut_jid.split(stanza.attr.from);
@@ -234,18 +290,21 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 			end
 
 			local number = normalize_number(user, host, search_number);
-			reply = st.reply(stanza):query("jabber:iq:search");
-
-
-			for _, jid in ipairs(search_by_number(number)) do
-				reply:tag("item", { jid = jid }):up();
+			local data = search_by_number(number);
+			reply = st.reply(stanza);
+			if form_stanza then
+				append_x_items(form_reply.e164.apply({}),
+					get_dataform_items(data, 'e164'), reply);
+			else
+				reply:query("jabber:iq:search");
+				for _, jid in ipairs(data) do
+					reply:tag("item", { jid = jid }):up();
+				end
 			end
 		elseif search_domain then
-			reply = st.reply(stanza):query("jabber:iq:search");
-
-			for _, dom in ipairs(search_domains(search_domain)) do
-				reply:tag("item", { domain = dom }):up();
-			end
+			reply = st.reply(stanza);
+			append_x_items(form_reply.domain.apply({}),
+				search_domains(search_domain), reply);
 		else
 			reply = st.error_reply(stanza, "modify",
 					"bad-request", "no domain, nick or e164 field found");
