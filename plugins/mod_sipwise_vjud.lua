@@ -291,18 +291,17 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 
 			local number = normalize_number(user, host, search_number);
 			local data = search_by_number(number);
-			reply = st.reply(stanza);
+			reply = st.reply(stanza):query("jabber:iq:search");
 			if form_stanza then
 				append_x_items(form_reply.e164.apply({}),
 					get_dataform_items(data, 'e164'), reply);
 			else
-				reply:query("jabber:iq:search");
 				for _, jid in ipairs(data) do
 					reply:tag("item", { jid = jid }):up();
 				end
 			end
 		elseif search_domain then
-			reply = st.reply(stanza);
+			reply = st.reply(stanza):query("jabber:iq:search");
 			append_x_items(form_reply.domain.apply({}),
 				search_domains(search_domain), reply);
 		else
