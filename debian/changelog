@@ -1,3 +1,20 @@
+ngcp-prosody-modules (1.15.0.0+0~mr5.0.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [608b9d6] MT#20021 mod_sipwise_vjud: add some debug messages related to normalize_number and search_by_number
+  * [bc610ad] Revert "MT#18055 mod_sipwise_vjud: use dataforms for searching e164 values"
+  * [9b811d4] MT#18055 mod_sipwise_vjud: use dataforms for searching e164 values
+  * [778b400] TT#1597 sipwise_vjud: add domain field
+  * [12c628f] TT#1597 sipwise_vjud: fix dataform reply format
+  * [c51c1f6] TT#1597 sipwise_vjud: fix dataform reply format
+
+  [ Guillem Jover ]
+  * [4a32147] MT#20479 Fix the package to be architecture all
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 01 Aug 2016 16:35:39 +0200
+
 ngcp-prosody-modules (1.14.0.0+0~mr4.5.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
