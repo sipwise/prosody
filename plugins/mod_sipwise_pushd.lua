@@ -89,6 +89,9 @@ local function push_enable(username, domain)
 end
 
 local function get_caller_info(jid, caller_defaults)
+	if not jid then
+		return nil;
+	end
 	local node, host = jid_split(jid);
 	local vcard = module:shared(format("/%s/sipwise_vcard_cusax/vcard", host));
 	if vcard then
@@ -143,16 +146,29 @@ local function get_jid_from_nick(muc_room, occ_nick)
 	end
 end
 
-local function get_muc_caller(room_jid)
+local function get_muc_room(room_jid)
 	local _, host, _ = jid_split(room_jid);
-	local room = hosts[host].muc.rooms[jid_bare(room_jid)];
+	module:log("debug", "host[%s] room_jid[%s]", tostring(host), room_jid);
+	if not hosts[host]then
+		module:log("warn", "host [%s] not defined", tostring(host));
+		return nil
+	end
+	if not hosts[host].muc then
+		module:log("warn", "muc not enabled here [%s]", tostring(host));
+		return nil
+	end
+	if not hosts[host].muc.rooms then
+		module:log("warn", "muc with no rooms defined at [%s]??",
+			tostring(host));
+		return nil
+	end
+	return hosts[host].muc.rooms[jid_bare(room_jid)];
+end
+
+local function get_muc_caller(room_jid)
+	local room = get_muc_room(room_jid)
 	if not room then
-		module:log("warn", "WTF!! %s not here?", jid_bare(room_jid));
-		local rooms = set.new();
-		for r in pairs(hosts[host].muc.rooms) do
-			rooms:add(r);
-		end
-		module:log("debug", "local rooms: %s", tostring(rooms));
+		module:log("warn", "room %s not here", room_jid);
 		return nil;
 	end
 	return get_jid_from_nick(room, room_jid);
@@ -206,18 +222,18 @@ local function get_muc_info(stanza, caller_info)
 end
 
 local function is_pushd_blocked(from, to)
-	local node, host = jid_split(to);
-	local blocked_list = pushd_blocking.get_blocked_jids(node, host);
+	local node_to, host_to = jid_split(to);
+	local blocked_list = pushd_blocking.get_blocked_jids(node_to, host_to);
 
 	module:log("debug", "pushd_blockedlist: %s for [%s]", ut.table.tostring(blocked_list), to);
 
-	local node, host, resource = jid_split(from);
+	local _, host_from, resource_from = jid_split(from);
 	if ut.table.contains(blocked_list, from)
 	   or ut.table.contains(blocked_list, jid_bare(from))
-	   or ut.table.contains(blocked_list, host) then
+	   or ut.table.contains(blocked_list, host_from) then
 		return true;
 	end
-	if resource and ut.table.contains(blocked_list, host.."/"..resource) then
+	if resource_from and ut.table.contains(blocked_list, host_from.."/"..resource_from) then
 		return true;
 	end
 	return false;
