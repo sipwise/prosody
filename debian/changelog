@@ -1,3 +1,9 @@
+ngcp-prosody-modules (1.13.2.1+0~mr4.4.2.1) unstable; urgency=medium
+
+  * New release.
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 30 Sep 2016 13:16:16 +0200
+
 ngcp-prosody-modules (1.13.2.0+0~mr4.4.2.0) unstable; urgency=medium
 
   [ Victor Seva ]
