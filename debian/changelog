@@ -1,3 +1,10 @@
+ngcp-prosody-modules (5.0.0.0+0~mr5.0.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [b09f209] MT#19579 pushd: define get_muc_room() to filter possible errors
+
+ -- Alexander Lutay <alutay@sipwise.com>  Fri, 21 Oct 2016 15:18:37 +0200
+
 ngcp-prosody-modules (1.15.0.0+0~mr5.0.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
