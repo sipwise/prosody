@@ -1,3 +1,12 @@
+ngcp-prosody-modules (1.14.2.2+0~mr4.5.2.2) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [95b4ddc] MT#19579 pushd: define get_muc_room() to filter possible errors
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 24 Oct 2016 14:28:42 +0200
+
 ngcp-prosody-modules (1.14.2.1+0~mr4.5.2.1) unstable; urgency=medium
 
   * New release.
