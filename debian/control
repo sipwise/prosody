@@ -42,3 +42,4 @@ Description: ngcp modules for the prosody Jabber/XMPP server
   * mod_carbons: XEP-0280: Message Carbons
   * mod_log_auth: logs IP address in a failed authentication attempt
   * mod_websocket.lua: XMPP over websocket
+  * mod_man: XEP-0313: Message Archive Management
