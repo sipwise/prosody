@@ -128,9 +128,9 @@ end
 
 local function get_nick(muc_room, occ_jid)
 	if not occ_jid then return nil end
-
+	local bare_occ_jid = jid_bare(occ_jid)
 	for nick, occupant in pairs(muc_room._occupants) do
-		if occupant.jid == occ_jid then
+		if jid_bare(occupant.jid) == bare_occ_jid then
 			return nick;
 		end
 	end
@@ -148,7 +148,7 @@ end
 
 local function get_muc_room(room_jid)
 	local _, host, _ = jid_split(room_jid);
-	module:log("debug", "host[%s] room_jid[%s]", tostring(host), room_jid);
+
 	if not hosts[host]then
 		module:log("warn", "host [%s] not defined", tostring(host));
 		return nil
@@ -204,7 +204,7 @@ local function get_muc_info(stanza, caller_info)
 		muc['jid'] = jid_bare(from);
 	end
 	muc['name'], muc['domain'] = jid_split(muc['jid']);
-	module:log("debug", "muc:%s", ut.table.tostring(muc));
+
 	local room_host = hosts[muc['domain']].muc;
 	if not room_host then
 		module:log("debug", "not from MUC host[%s]", muc.domain);
@@ -354,15 +354,23 @@ end
 
 local function fire_offline_message(event, muc_room, off_jid)
 	local stanza_c = st.clone(event.stanza);
+	local orig_from = event.stanza.attr.from;
 	stanza_c.attr.to = off_jid;
-	stanza_c.attr.from = get_nick(muc_room, stanza_c.attr.from);
+	stanza_c.attr.from = get_nick(muc_room, orig_from);
 
 	module:log("debug", "stanza[%s] stanza_c[%s]",
 		tostring(event.stanza), tostring(stanza_c));
-
+	if not stanza_c.attr.from then
+		module:log("error", "original from[%s] not found at muc_room[%s]",
+			tostring(event.stanza.attr.from), tostring(muc_room));
+		return nil;
+	end
 	if is_pushd_blocked(stanza_c.attr.from, stanza_c.attr.to) then
 		module:log("debug", "skip pushd message from blocked jid [%s]",
 			stanza_c.attr.from);
+	elseif is_pushd_blocked(orig_from, stanza_c.attr.to) then
+		module:log("debug", "skip pushd message from blocked jid [%s]",
+			orig_from);
 	else
 		module:fire_event('message/offline/handle', {
 			origin = event.origin,
