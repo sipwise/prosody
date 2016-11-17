@@ -1,3 +1,12 @@
+ngcp-prosody-modules (1.14.1.3+0~mr4.5.1.3) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [13fa784] TT#6605 mod_sipwise_pushd: fix MUC offline when sender has more than one session
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 17 Nov 2016 11:25:34 +0100
+
 ngcp-prosody-modules (1.14.1.2+0~mr4.5.1.2) unstable; urgency=medium
 
   [ Victor Seva ]
