@@ -1,0 +1,7 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Alexander Lutay <alutay@sipwise.com>
+Submitted-by: Víctor Seva <vseva@sipwise.com>
+Submitted-at: Thu, 17 Nov 2016 11:24:37 +0100
+Reviewed-on: http://gerrit.mgm.sipwise.com/9639
+Project: prosody
+Branch: refs/heads/mr4.5.2
