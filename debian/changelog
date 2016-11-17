@@ -1,3 +1,14 @@
+ngcp-prosody-modules (5.1.0.0+0~mr5.1.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [e4a378a] MT#10921 add mod_man plugin
+  * [5003261] TT#6605 mod_sipwise_pushd: fix MUC offline when sender has more than one session
+  * [0d7e7ac] TT#6646 support XEP-0352: Client State Indication
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 17 Nov 2016 23:19:59 +0100
+
 ngcp-prosody-modules (5.0.0.0+0~mr5.0.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
