@@ -43,3 +43,8 @@ Description: ngcp modules for the prosody Jabber/XMPP server
   * mod_log_auth: logs IP address in a failed authentication attempt
   * mod_websocket.lua: XMPP over websocket
   * mod_man: XEP-0313: Message Archive Management
+  * mod_csi: XEP-0352: Client State Indication
+  * mod_throttle_presence: cuts down on presence traffic when clients
+    indicate they are inactive
+  * mod_filter_chatstates: will filter Chat State Notifications out
+    while the session is considered inactive
