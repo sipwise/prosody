@@ -116,7 +116,7 @@ local function load_vhosts_from_db()
 				ut.table.add(conference_modules, "sipwise_pushd");
 			end
 			module:log("debug", "conference_modules[%s]: %s",
-				"conference."..row.domain, tostring(host_modules));
+				"conference."..row.domain, ut.table.tostring(host_modules));
 			configmanager.set("conference."..row.domain, "modules_enabled",
 				conference_modules);
 			local conference_config = configmanager.getconfig()["conference."..row.domain];
