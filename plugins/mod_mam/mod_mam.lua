@@ -3,7 +3,8 @@
 --
 -- This file is MIT/X11 licensed.
 
-local xmlns_mam     = "urn:xmpp:mam:0";
+local xmlns_mam0     = "urn:xmpp:mam:0";
+local xmlns_mam1     = "urn:xmpp:mam:1";
 local xmlns_delay   = "urn:xmpp:delay";
 local xmlns_forward = "urn:xmpp:forward:0";
 
@@ -54,11 +55,11 @@ end
 local cleanup;
 
 -- Handle prefs.
-module:hook("iq/self/"..xmlns_mam..":prefs", function(event)
+local function handle_prefs(event, xmlns_mam)
 	local origin, stanza = event.origin, event.stanza;
 	local user = origin.username;
 	if stanza.attr.type == "get" then
-		local prefs = prefs_to_stanza(get_prefs(user));
+		local prefs = prefs_to_stanza(get_prefs(user), xmlns_mam);
 		local reply = st.reply(stanza):add_child(prefs);
 		origin.send(reply);
 	else -- type == "set"
@@ -72,24 +73,47 @@ module:hook("iq/self/"..xmlns_mam..":prefs", function(event)
 		end
 	end
 	return true;
+end
+
+module:hook("iq/self/"..xmlns_mam1..":prefs", function(event)
+	return handle_prefs(event, xmlns_mam1)
 end);
 
-local query_form = dataform {
-	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam; };
+module:hook("iq/self/"..xmlns_mam0..":prefs", function(event)
+	return handle_prefs(event, xmlns_mam0)
+end);
+
+local query_form = {}
+query_form[xmlns_mam1] = dataform {
+	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam1; };
+	{ name = "with"; type = "jid-single"; };
+	{ name = "start"; type = "text-single" };
+	{ name = "end"; type = "text-single"; };
+};
+query_form[xmlns_mam0] = dataform {
+	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam0; };
 	{ name = "with"; type = "jid-single"; };
 	{ name = "start"; type = "text-single" };
 	{ name = "end"; type = "text-single"; };
 };
 
 -- Serve form
-module:hook("iq-get/self/"..xmlns_mam..":query", function(event)
+local function get_form(event, xmlns_mam)
 	local origin, stanza = event.origin, event.stanza;
-	origin.send(st.reply(stanza):add_child(query_form:form()));
+	origin.send(st.reply(stanza):add_child(query_form[xmlns_mam]:form()));
 	return true;
+end
+
+module:hook("iq-get/self/"..xmlns_mam1..":query", function(event)
+	return get_form(event, xmlns_mam1);
+end);
+
+module:hook("iq-get/self/"..xmlns_mam0..":query", function(event)
+	return get_form(event, xmlns_mam0);
 end);
 
 -- Handle archive queries
-module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
+local function handle_query(event, xmlns_mam)
 	local origin, stanza = event.origin, event.stanza;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
@@ -101,7 +125,7 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	local form = query:get_child("x", "jabber:x:data");
 	if form then
 		local err;
-		form, err = query_form:data(form);
+		form, err = query_form[xmlns_mam]:data(form);
 		if err then
 			origin.send(st.error_reply(stanza, "modify", "bad-request", select(2, next(err))));
 			return true;
@@ -145,9 +169,13 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 		return true;
 	end
 	local total = tonumber(err);
+	local msg_reply_attr;
 
-	origin.send(st.reply(stanza));
-	local msg_reply_attr = { to = stanza.attr.from, from = stanza.attr.to };
+	if xmlns_mam == xmlns_mam0 then
+		origin.send(st.reply(stanza));
+		msg_reply_attr = { to = stanza.attr.from, from = stanza.attr.to };
+	end
+
 
 	local results = {};
 
@@ -192,11 +220,27 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	-- That's all folks!
 	module:log("debug", "Archive query %s completed", tostring(qid));
 
-	origin.send(st.message(msg_reply_attr)
-		:tag("fin", { xmlns = xmlns_mam, queryid = qid, complete = complete })
-			:add_child(rsm.generate {
-				first = first, last = last, count = total }));
+	local reply_stanza;
+	if xmlns_mam == xmlns_mam0 then
+		reply_stanza = st.message(msg_reply_attr);
+	else
+		reply_stanza = st.reply(stanza);
+	end
+
+	if form or xmlns_mam == xmlns_mam0 then
+		reply_stanza:tag("fin",{ xmlns = xmlns_mam, queryid = qid, complete = complete })
+				:add_child(rsm.generate { first = first, last = last, count = total })
+	end
+	origin.send(reply_stanza);
 	return true;
+end
+
+module:hook("iq-set/self/"..xmlns_mam1..":query", function(event)
+	return handle_query(event, xmlns_mam1);
+end);
+
+module:hook("iq-set/self/"..xmlns_mam0..":query", function(event)
+	return handle_query(event, xmlns_mam0);
 end);
 
 local function has_in_roster(user, who)
@@ -330,9 +374,11 @@ module:hook("pre-message/full", c2s_message_handler, 2);
 module:hook("message/bare", message_handler, 2);
 module:hook("message/full", message_handler, 2);
 
-module:add_feature(xmlns_mam); -- COMPAT with XEP-0313 v 0.1
+module:add_feature(xmlns_mam0); -- COMPAT with XEP-0313 v 0.1
+module:add_feature(xmlns_mam1); -- COMPAT with XEP-0313 v 0.5
 
 module:hook("account-disco-info", function(event)
-	(event.reply or event.stanza):tag("feature", {var=xmlns_mam}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_mam0}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_mam1}):up();
 end);
 
