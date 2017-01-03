@@ -37,21 +37,7 @@ if global_default_policy ~= "roster" then
 	global_default_policy = module:get_option_boolean("default_archive_policy", global_default_policy);
 end
 
-local archive_store = "archive2";
-local archive = assert(module:open_store(archive_store, "archive"));
-
-if archive.name == "null" or not archive.find then
-	if not archive.find then
-		module:log("debug", "Attempt to open archive storage returned a valid driver but it does not seem to implement the storage API");
-		module:log("debug", "mod_%s does not support archiving", archive._provided_by or archive.name and "storage_"..archive.name.."(?)" or "<unknown>");
-	else
-		module:log("debug", "Attempt to open archive storage returned null driver");
-	end
-	module:log("debug", "See https://prosody.im/doc/storage and https://prosody.im/doc/archiving for more information");
-	module:log("info", "Using in-memory fallback archive driver");
-	archive = module:require "fallback_archive";
-end
-
+local archive = module:require "sipwise_archive";
 local cleanup;
 
 -- Handle prefs.
