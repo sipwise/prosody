@@ -88,13 +88,21 @@ local function push_enable(username, domain)
 	return false;
 end
 
+local function is_local_domain(dom)
+	return ut.table.contains(ut.table.keys(hosts), dom);
+end
+
 local function get_caller_info(jid, caller_defaults)
 	if not jid then
 		return nil;
 	end
 	local node, host = jid_split(jid);
+	if not is_local_domain(host) then
+		module:log("debug", "caller[%s] not local", jid);
+		return nil;
+	end
 	local vcard = module:shared(format("/%s/sipwise_vcard_cusax/vcard", host));
-	if vcard then
+	if vcard and vcard.get_subscriber_info then
 		local info = vcard.get_subscriber_info(node, host);
 		module:log("debug", "caller_info of %s", jid);
 		if not info.display_name then
@@ -204,7 +212,10 @@ local function get_muc_info(stanza, caller_info)
 		muc['jid'] = jid_bare(from);
 	end
 	muc['name'], muc['domain'] = jid_split(muc['jid']);
-
+	if not is_local_domain(muc['domain']) then
+		module:log("debug", "not from local host[%s]", tostring(muc.domain));
+		return nil;
+	end
 	local room_host = hosts[muc['domain']].muc;
 	if not room_host then
 		module:log("debug", "not from MUC host[%s]", muc.domain);
