@@ -88,13 +88,25 @@ local function push_enable(username, domain)
 	return false;
 end
 
+local function is_local_domain(dom)
+	local hosts_keys = ut.table.keys(hosts);
+	if ut.table.contains(hosts_keys, dom) then
+		return true;
+	end
+	return false;
+end
+
 local function get_caller_info(jid, caller_defaults)
 	if not jid then
 		return nil;
 	end
 	local node, host = jid_split(jid);
+	if not is_local_domain(host) then
+		module:log("debug", "caller[%s] not local", jid);
+		return nil;
+	end
 	local vcard = module:shared(format("/%s/sipwise_vcard_cusax/vcard", host));
-	if vcard then
+	if vcard and vcard.get_subscriber_info then
 		local info = vcard.get_subscriber_info(node, host);
 		module:log("debug", "caller_info of %s", jid);
 		if not info.display_name then
@@ -204,7 +216,10 @@ local function get_muc_info(stanza, caller_info)
 		muc['jid'] = jid_bare(from);
 	end
 	muc['name'], muc['domain'] = jid_split(muc['jid']);
-
+	if not is_local_domain(muc['domain']) then
+		module:log("debug", "not from local host[%s]", tostring(muc.domain));
+		return nil;
+	end
 	local room_host = hosts[muc['domain']].muc;
 	if not room_host then
 		module:log("debug", "not from MUC host[%s]", muc.domain);
@@ -269,7 +284,7 @@ local function handle_offline(event)
 	end
 	local function build_push_apns_query(msg, muc)
 		if msg.data_type ~= 'invite' then
-			msg.apns_alert = string.format("message received from %s\n",
+			msg.apns_alert = format("message received from %s\n",
 				caller_info.display_name) .. msg.data_message;
 		else
 			msg.apns_alert = muc['invite'];
@@ -286,9 +301,6 @@ local function handle_offline(event)
 			caller_jid = get_muc_caller(stanza.attr.from);
 			module:log("debug", "from:%s -> caller_jid:%s",
 				tostring(stanza.attr.from), tostring(caller_jid));
-			caller_info = get_caller_info(caller_jid, caller_defaults) or
-				caller_defaults;
-			muc = get_muc_info(stanza, caller_info);
 		else
 			msg.data_type = 'message';
 			local invite = stanza:get_child('x',
@@ -301,10 +313,10 @@ local function handle_offline(event)
 				caller_jid = jid_bare(invite:get_child('invite').attr.from) or
 					caller_jid;
 			end
-			caller_info = get_caller_info(caller_jid, caller_defaults) or
-				caller_defaults;
-			muc = get_muc_info(stanza, caller_info);
 		end
+		caller_info = get_caller_info(caller_jid, caller_defaults) or
+				caller_defaults;
+		muc = get_muc_info(stanza, caller_info);
 		msg.data_sender_jid = caller_jid;
 		msg.data_sender_sip = jid_bare(caller_jid);
 		msg.push_id = uuid.generate();
