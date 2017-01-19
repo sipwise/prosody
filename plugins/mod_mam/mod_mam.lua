@@ -267,11 +267,23 @@ local function message_handler(event, c2s)
 	local orig_from = stanza.attr.from;
 	local orig_to = stanza.attr.to or orig_from;
 	-- Stanza without 'to' are treated as if it was to their own bare jid
+	local body = stanza:get_child("body");
+	local force_store = stanza:get_child("store", "urn:xmpp:hints");
 
-	-- We store chat messages or normal messages that have a body
-	if not(orig_type == "chat" or (orig_type == "normal" and stanza:get_child("body")) ) then
-		log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
-		return;
+	if not force_store then
+		-- We store chat messages or normal messages that have a body
+		if not(orig_type == "chat" or (orig_type == "normal" and body)) then
+			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
+			return;
+		elseif (orig_type == 'chat' and not body) then
+			log("debug", "Not archiving stanza: %s (type), has no body",
+				stanza:top_tag());
+		end
+	else
+		log("debug", "store hint detected");
+		if orig_type == 'error' then
+			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
+		end
 	end
 	-- or if hints suggest we shouldn't
 	if stanza:get_child("no-permanent-storage", "urn:xmpp:hints") -- The XEP needs to decide on "store" or "storage"
