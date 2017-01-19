@@ -29,8 +29,8 @@ WHERE `username` = ? AND `epoch` <= ?;
 ]]
 
 local select_key_query=[[
-SELECT id FROM `sipwise_mam`
-WHERE `key` = UuidToBin(?)
+SELECT `id` FROM `sipwise_mam`
+WHERE `key` = UuidToBin(?);
 ]]
 
 local select_query_base=[[
@@ -63,6 +63,11 @@ end
 local function key_get_id(key)
 	local res;
 	reconect_check();
+	-- key is an uuid
+	if string.len(key) ~= 36 then
+		log("warn", "key[%s] is not a proper uuid");
+		return nil;
+	end
 	res = engine:select(select_key_query, key);
 	local out = {};
 	for row in res do
