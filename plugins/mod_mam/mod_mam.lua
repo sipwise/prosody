@@ -3,8 +3,7 @@
 --
 -- This file is MIT/X11 licensed.
 
-local xmlns_mam0     = "urn:xmpp:mam:0";
-local xmlns_mam1     = "urn:xmpp:mam:1";
+local xmlns_mam     = "urn:xmpp:mam:0";
 local xmlns_delay   = "urn:xmpp:delay";
 local xmlns_forward = "urn:xmpp:forward:0";
 
@@ -37,15 +36,29 @@ if global_default_policy ~= "roster" then
 	global_default_policy = module:get_option_boolean("default_archive_policy", global_default_policy);
 end
 
-local archive = module:require "sipwise_archive";
+local archive_store = "archive2";
+local archive = assert(module:open_store(archive_store, "archive"));
+
+if archive.name == "null" or not archive.find then
+	if not archive.find then
+		module:log("debug", "Attempt to open archive storage returned a valid driver but it does not seem to implement the storage API");
+		module:log("debug", "mod_%s does not support archiving", archive._provided_by or archive.name and "storage_"..archive.name.."(?)" or "<unknown>");
+	else
+		module:log("debug", "Attempt to open archive storage returned null driver");
+	end
+	module:log("debug", "See https://prosody.im/doc/storage and https://prosody.im/doc/archiving for more information");
+	module:log("info", "Using in-memory fallback archive driver");
+	archive = module:require "fallback_archive";
+end
+
 local cleanup;
 
 -- Handle prefs.
-local function handle_prefs(event, xmlns_mam)
+module:hook("iq/self/"..xmlns_mam..":prefs", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local user = origin.username;
 	if stanza.attr.type == "get" then
-		local prefs = prefs_to_stanza(get_prefs(user), xmlns_mam);
+		local prefs = prefs_to_stanza(get_prefs(user));
 		local reply = st.reply(stanza):add_child(prefs);
 		origin.send(reply);
 	else -- type == "set"
@@ -59,47 +72,24 @@ local function handle_prefs(event, xmlns_mam)
 		end
 	end
 	return true;
-end
-
-module:hook("iq/self/"..xmlns_mam1..":prefs", function(event)
-	return handle_prefs(event, xmlns_mam1)
 end);
 
-module:hook("iq/self/"..xmlns_mam0..":prefs", function(event)
-	return handle_prefs(event, xmlns_mam0)
-end);
-
-local query_form = {}
-query_form[xmlns_mam1] = dataform {
-	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam1; };
-	{ name = "with"; type = "jid-single"; };
-	{ name = "start"; type = "text-single" };
-	{ name = "end"; type = "text-single"; };
-};
-query_form[xmlns_mam0] = dataform {
-	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam0; };
+local query_form = dataform {
+	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam; };
 	{ name = "with"; type = "jid-single"; };
 	{ name = "start"; type = "text-single" };
 	{ name = "end"; type = "text-single"; };
 };
 
 -- Serve form
-local function get_form(event, xmlns_mam)
+module:hook("iq-get/self/"..xmlns_mam..":query", function(event)
 	local origin, stanza = event.origin, event.stanza;
-	origin.send(st.reply(stanza):add_child(query_form[xmlns_mam]:form()));
+	origin.send(st.reply(stanza):add_child(query_form:form()));
 	return true;
-end
-
-module:hook("iq-get/self/"..xmlns_mam1..":query", function(event)
-	return get_form(event, xmlns_mam1);
-end);
-
-module:hook("iq-get/self/"..xmlns_mam0..":query", function(event)
-	return get_form(event, xmlns_mam0);
 end);
 
 -- Handle archive queries
-local function handle_query(event, xmlns_mam)
+module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	local origin, stanza = event.origin, event.stanza;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
@@ -111,7 +101,7 @@ local function handle_query(event, xmlns_mam)
 	local form = query:get_child("x", "jabber:x:data");
 	if form then
 		local err;
-		form, err = query_form[xmlns_mam]:data(form);
+		form, err = query_form:data(form);
 		if err then
 			origin.send(st.error_reply(stanza, "modify", "bad-request", select(2, next(err))));
 			return true;
@@ -155,13 +145,9 @@ local function handle_query(event, xmlns_mam)
 		return true;
 	end
 	local total = tonumber(err);
-	local msg_reply_attr;
 
-	if xmlns_mam == xmlns_mam0 then
-		origin.send(st.reply(stanza));
-		msg_reply_attr = { to = stanza.attr.from, from = stanza.attr.to };
-	end
-
+	origin.send(st.reply(stanza));
+	local msg_reply_attr = { to = stanza.attr.from, from = stanza.attr.to };
 
 	local results = {};
 
@@ -206,27 +192,11 @@ local function handle_query(event, xmlns_mam)
 	-- That's all folks!
 	module:log("debug", "Archive query %s completed", tostring(qid));
 
-	local reply_stanza;
-	if xmlns_mam == xmlns_mam0 then
-		reply_stanza = st.message(msg_reply_attr);
-	else
-		reply_stanza = st.reply(stanza);
-	end
-
-	if form or xmlns_mam == xmlns_mam0 then
-		reply_stanza:tag("fin",{ xmlns = xmlns_mam, queryid = qid, complete = complete })
-				:add_child(rsm.generate { first = first, last = last, count = total })
-	end
-	origin.send(reply_stanza);
+	origin.send(st.message(msg_reply_attr)
+		:tag("fin", { xmlns = xmlns_mam, queryid = qid, complete = complete })
+			:add_child(rsm.generate {
+				first = first, last = last, count = total }));
 	return true;
-end
-
-module:hook("iq-set/self/"..xmlns_mam1..":query", function(event)
-	return handle_query(event, xmlns_mam1);
-end);
-
-module:hook("iq-set/self/"..xmlns_mam0..":query", function(event)
-	return handle_query(event, xmlns_mam0);
 end);
 
 local function has_in_roster(user, who)
@@ -267,25 +237,11 @@ local function message_handler(event, c2s)
 	local orig_from = stanza.attr.from;
 	local orig_to = stanza.attr.to or orig_from;
 	-- Stanza without 'to' are treated as if it was to their own bare jid
-	local body = stanza:get_child("body");
-	local force_store = stanza:get_child("store", "urn:xmpp:hints");
 
-	if not force_store then
-		-- We store chat messages or normal messages that have a body
-		if not(orig_type == "chat" or (orig_type == "normal" and body)) then
-			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
-			return;
-		elseif (orig_type == 'chat' and not body) then
-			log("debug", "Not archiving stanza: %s (type), has no body",
-				stanza:top_tag());
-			return;
-		end
-	else
-		log("debug", "store hint detected");
-		if orig_type == 'error' then
-			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
-			return;
-		end
+	-- We store chat messages or normal messages that have a body
+	if not(orig_type == "chat" or (orig_type == "normal" and stanza:get_child("body")) ) then
+		log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
+		return;
 	end
 	-- or if hints suggest we shouldn't
 	if stanza:get_child("no-permanent-storage", "urn:xmpp:hints") -- The XEP needs to decide on "store" or "storage"
@@ -374,11 +330,9 @@ module:hook("pre-message/full", c2s_message_handler, 2);
 module:hook("message/bare", message_handler, 2);
 module:hook("message/full", message_handler, 2);
 
-module:add_feature(xmlns_mam0); -- COMPAT with XEP-0313 v 0.1
-module:add_feature(xmlns_mam1); -- COMPAT with XEP-0313 v 0.5
+module:add_feature(xmlns_mam); -- COMPAT with XEP-0313 v 0.1
 
 module:hook("account-disco-info", function(event)
-	(event.reply or event.stanza):tag("feature", {var=xmlns_mam0}):up();
-	(event.reply or event.stanza):tag("feature", {var=xmlns_mam1}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_mam}):up();
 end);
 

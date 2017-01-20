@@ -2,21 +2,24 @@ Source: ngcp-prosody-modules
 Section: net
 Priority: extra
 Maintainer: Sipwise Development Team <support@sipwise.com>
-Build-Depends: debhelper (>= 9~)
+Build-Depends:
+ debhelper (>= 9~),
+ quilt,
 Standards-Version: 3.9.7
 Homepage: http://sipwise.com/
 
 Package: ngcp-prosody-modules
 Architecture: all
-Depends: lua-bitop,
-         lua-dbi-common,
-         lua-dbi-mysql,
-         lua-redis,
-         lua-rex-pcre,
-         lua-sec,
-         ngcp-system-tools-ce | ngcp-system-tools,
-         prosody (>= 0.9.8~),
-         ${misc:Depends},
+Depends:
+ lua-bitop,
+ lua-dbi-common,
+ lua-dbi-mysql,
+ lua-redis,
+ lua-rex-pcre,
+ lua-sec,
+ ngcp-system-tools-ce | ngcp-system-tools,
+ prosody (>= 0.9.8~),
+ ${misc:Depends},
 Description: ngcp modules for the prosody Jabber/XMPP server
  This package provides modules for the Prosody Jabber/XMPP server
  Prosody, especially for usage with the Sipwise Next Generation
