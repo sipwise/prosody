@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "1a622d24_7c20cd9b",
+        "filename": "debian/rules",
+        "patchSetId": 4
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2017-01-20T11:54:50Z",
+      "side": 1,
+      "message": "yes, at the time there were no prosody-modules in debian and there are no releases per se ( upstream will never release any). We were using untouched modules from upstream and ours, so I decided to keep the package as native\n\nNow that we are introducing patches to upstream modules we should keep them in patches, even if is native.",
+      "parentUuid": "1a622d24_39182784",
+      "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a622d24_9c0fa92e",
         "filename": "plugins/mod_auth_sql.lua",
         "patchSetId": 4
@@ -30,6 +48,24 @@
       "writtenOn": "2017-01-20T11:38:48Z",
       "side": 1,
       "message": "This change is not present in the patches, but I guess it might be relevant?",
+      "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a622d24_5c2511aa",
+        "filename": "plugins/mod_auth_sql.lua",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2017-01-20T11:54:50Z",
+      "side": 1,
+      "message": "No, it is not. We do use \"auth_sql\" in templates so this change is not going to be a problem.",
+      "parentUuid": "1a622d24_9c0fa92e",
       "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
