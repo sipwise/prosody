@@ -5,6 +5,7 @@
 -- Copyright (C) 2012-2015 Kim Alvefur
 -- Copyright (C) 2012 Thijs Alkemade
 -- Copyright (C) 2014 Florian Zeitz
+-- Copyright (C) 2016 Thilo Molitor
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
@@ -33,17 +34,26 @@ local resume_timeout = module:get_option_number("smacks_hibernation_time", 300);
 local s2s_smacks = module:get_option_boolean("smacks_enabled_s2s", false);
 local s2s_resend = module:get_option_boolean("smacks_s2s_resend", false);
 local max_unacked_stanzas = module:get_option_number("smacks_max_unacked_stanzas", 0);
+local delayed_ack_timeout = module:get_option_number("smacks_max_ack_delay", 60);
 local core_process_stanza = prosody.core_process_stanza;
 local sessionmanager = require"core.sessionmanager";
 
 local c2s_sessions = module:shared("/*/c2s/sessions");
 local session_registry = {};
 
+local function delayed_ack_function(session)
+	-- fire event only when configured to do so
+	if delayed_ack_timeout > 0 and session.awaiting_ack and not session.outgoing_stanza_queue == nil then
+		session.log("debug", "Firing event 'smacks-ack-delayed', queue = %d", #session.outgoing_stanza_queue);
+		module:fire_event("smacks-ack-delayed", {origin = session, queue = session.outgoing_stanza_queue});
+	end
+end
+
 local function can_do_smacks(session, advertise_only)
 	if session.smacks then return false, "unexpected-request", "Stream management is already enabled"; end
 
 	local session_type = session.type;
-	if session_type == "c2s" then
+	if session.username then
 		if not(advertise_only) and not(session.resource) then -- Fail unless we're only advertising sm
 			return false, "unexpected-request", "Client must bind a resource before enabling stream management";
 		end
@@ -85,11 +95,22 @@ local function outgoing_stanza_filter(stanza, session)
 		session.log("debug", "#queue = %d", #queue);
 		if session.hibernating then
 			session.log("debug", "hibernating, stanza queued");
-			return ""; -- Hack to make session.send() not return nil
+			return nil;
 		end
-		if #queue > max_unacked_stanzas and not session.awaiting_ack then
-			session.awaiting_ack = true;
-			return tostring(stanza)..tostring(st.stanza("r", { xmlns = session.smacks }));
+		if #queue > max_unacked_stanzas and session.awaiting_ack == nil then
+			session.log("debug", "Queuing <r> (in a moment)");
+			session.awaiting_ack = false;
+			session.awaiting_ack_timer = module:add_timer(1e-06, function ()
+				if not session.awaiting_ack then
+					session.log("debug", "Sending <r> (before send)");
+					(session.sends2s or session.send)(st.stanza("r", { xmlns = session.smacks }))
+					session.log("debug", "Sending <r> (after send)");
+					session.awaiting_ack = true;
+					session.delayed_ack_timer = module:add_timer(delayed_ack_timeout, function()
+						delayed_ack_function(session);
+					end);
+				end
+			end);
 		end
 	end
 	return stanza;
@@ -109,7 +130,7 @@ local function wrap_session_out(session, resume)
 		session.last_acknowledged_stanza = 0;
 	end
 
-	add_filter(session, "stanzas/out", outgoing_stanza_filter, -1000);
+	add_filter(session, "stanzas/out", outgoing_stanza_filter, -999);
 
 	local session_close = session.close;
 	function session.close(...)
@@ -126,7 +147,7 @@ local function wrap_session_in(session, resume)
 	if not resume then
 		session.handled_stanza_count = 0;
 	end
-	add_filter(session, "stanzas/in", count_incoming_stanzas, 1000);
+	add_filter(session, "stanzas/in", count_incoming_stanzas, 999);
 
 	return session;
 end
@@ -165,7 +186,7 @@ module:hook_stanza(xmlns_sm3, "enable", function (session, stanza) return handle
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features",
 		function (session, stanza)
-			module:add_timer(0, function ()
+			module:add_timer(1e-6, function ()
 				if can_do_smacks(session) then
 					if stanza:get_child("sm", xmlns_sm3) then
 						session.sends2s(st.stanza("enable", sm3_attr));
@@ -210,6 +231,12 @@ module:hook_stanza(xmlns_sm3, "r", function (origin, stanza) return handle_r(ori
 function handle_a(origin, stanza)
 	if not origin.smacks then return; end
 	origin.awaiting_ack = nil;
+	if origin.awaiting_ack_timer then
+		origin.awaiting_ack_timer:stop();
+	end
+	if origin.delayed_ack_timer then
+		origin.delayed_ack_timer:stop();
+	end
 	-- Remove handled stanzas from outgoing_stanza_queue
 	--log("debug", "ACK: h=%s, last=%s", stanza.attr.h or "", origin.last_acknowledged_stanza or "");
 	local h = tonumber(stanza.attr.h);
@@ -272,6 +299,7 @@ module:hook("pre-resource-unbind", function (event)
 			local hibernate_time = os_time(); -- Track the time we went into hibernation
 			session.hibernating = hibernate_time;
 			local resumption_token = session.resumption_token;
+			module:fire_event("smacks-hibernation-start", {origin = session, queue = session.outgoing_stanza_queue});
 			timer.add_task(resume_timeout, function ()
 				session.log("debug", "mod_smacks hibernation timeout reached...");
 				-- We need to check the current resumption token for this resource
@@ -369,6 +397,7 @@ function handle_resume(session, stanza, xmlns_sm)
 		-- Ok, we need to re-send any stanzas that the client didn't see
 		-- ...they are what is now left in the outgoing stanza queue
 		local queue = original_session.outgoing_stanza_queue;
+		module:fire_event("smacks-hibernation-end", {origin = session, queue = queue});
 		session.log("debug", "#queue = %d", #queue);
 		for i=1,#queue do
 			session.send(queue[i]);
@@ -390,10 +419,21 @@ local function handle_read_timeout(event)
 	local session = event.session;
 	if session.smacks then
 		if session.awaiting_ack then
+			if session.awaiting_ack_timer then
+				session.awaiting_ack_timer:stop();
+			end
+			if session.delayed_ack_timer then
+				session.delayed_ack_timer:stop();
+			end
 			return false; -- Kick the session
 		end
+		session.log("debug", "Sending <r> (read timeout)");
+		session.awaiting_ack = false;
 		(session.sends2s or session.send)(st.stanza("r", { xmlns = session.smacks }));
 		session.awaiting_ack = true;
+		session.delayed_ack_timer = module:add_timer(delayed_ack_timeout, function()
+			delayed_ack_function(session);
+		end);
 		return true;
 	end
 end
