@@ -8,7 +8,7 @@ local new_sasl = require "util.sasl".new;
 local DBI = require "DBI"
 
 local connection;
-local params = module:get_option("auth_sql", module:get_option("auth_sql"));
+local params = module:get_option("auth_sql", module:get_option("sql"));
 
 local resolve_relative_path = require "core.configmanager".resolve_relative_path;
 
@@ -43,18 +43,17 @@ end
 
 do -- process options to get a db connection
 	params = params or { driver = "SQLite3" };
-	
+
 	if params.driver == "SQLite3" then
 		params.database = resolve_relative_path(prosody.paths.data or ".", params.database or "prosody.sqlite");
 	end
-	
+
 	assert(params.driver and params.database, "Both the SQL driver and the database need to be specified");
-	
+
 	assert(connect());
 end
 
 local function getsql(sql, ...)
-	module:log("debug", "getsql: %s", sql);
 	if params.driver == "PostgreSQL" then
 		sql = sql:gsub("`", "\"");
 	end
@@ -67,20 +66,19 @@ local function getsql(sql, ...)
 	local ok, err = stmt:execute(...);
 	if not ok and not test_connection() then error("connection failed"); end
 	if not ok then return nil, err; end
-	
+
 	return stmt;
 end
 
 local function get_password(username)
-	local substmt, err;
-	substmt, err = getsql("SELECT `password` FROM `subscriber` WHERE `username`=? AND `domain`=?", username, module.host);
-	if substmt then
-		for row in substmt:rows(true) do
-			module:log("debug", "get_password: found subscriber %s@%s", username, module.host);
+	local stmt, err = getsql("SELECT `password` FROM `authreg` WHERE `username`=? AND `realm`=?", username, module.host);
+	if stmt then
+		for row in stmt:rows(true) do
 			return row.password;
 		end
 	end
 end
+
 
 provider = {};
 
@@ -111,7 +109,7 @@ function provider.get_sasl_handler()
 end
 
 function provider.users()
-	local stmt, err = getsql("SELECT `username` FROM `subscriber` WHERE `domain`=?", module.host);
+	local stmt, err = getsql("SELECT `username` FROM `authreg` WHERE `realm`=?", module.host);
 	if stmt then
 		local next, state = stmt:rows(true)
 		return function()

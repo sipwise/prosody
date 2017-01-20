@@ -1,0 +1,43 @@
+From 9e93fb65101c48a62fec403541216f99e24a121a Mon Sep 17 00:00:00 2001
+From: Victor Seva <vseva@sipwise.com>
+Date: Thu, 19 Jan 2017 16:25:24 +0100
+Subject: [PATCH] TT#9303 mod_mam: sipwise_archive.lib fix crash at find()
+
+> mod_c2s: Traceback[c2s]: /usr/lib/prosody/util/sql.lua:189:
+>  Error executing statement parameters: Data too long for column '_uuid' at row 1
+
+Change-Id: I9e7d6a310ee5e5e8f83cbc97cb2f7ebcf4f534b5
+---
+ plugins/mod_mam/sipwise_archive.lib.lua | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/plugins/mod_mam/sipwise_archive.lib.lua b/plugins/mod_mam/sipwise_archive.lib.lua
+index f772ea6..087c306 100644
+--- a/plugins/mod_mam/sipwise_archive.lib.lua
++++ b/plugins/mod_mam/sipwise_archive.lib.lua
+@@ -29,8 +29,8 @@ WHERE `username` = ? AND `epoch` <= ?;
+ ]]
+ 
+ local select_key_query=[[
+-SELECT id FROM `sipwise_mam`
+-WHERE `key` = UuidToBin(?)
++SELECT `id` FROM `sipwise_mam`
++WHERE `key` = UuidToBin(?);
+ ]]
+ 
+ local select_query_base=[[
+@@ -63,6 +63,11 @@ end
+ local function key_get_id(key)
+ 	local res;
+ 	reconect_check();
++	-- key is an uuid
++	if string.len(key) ~= 36 then
++		log("warn", "key[%s] is not a proper uuid");
++		return nil;
++	end
+ 	res = engine:select(select_key_query, key);
+ 	local out = {};
+ 	for row in res do
+-- 
+2.11.0
+

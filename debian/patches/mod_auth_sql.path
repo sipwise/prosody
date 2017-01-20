@@ -1,0 +1,24 @@
+From: Andreas Granig <agranig@sipwise.com>
+Date:   Wed Aug 7 22:34:34 2013 +0200
+Subject: sipwise custom auth
+---
+--- a/plugins/mod_auth_sql.lua
++++ b/plugins/mod_auth_sql.lua
+@@ -71,7 +71,7 @@ local function getsql(sql, ...)
+ end
+ 
+ local function get_password(username)
+-	local stmt, err = getsql("SELECT `password` FROM `authreg` WHERE `username`=? AND `realm`=?", username, module.host);
++	local stmt, err = getsql("SELECT `password` FROM `subscriber` WHERE `username`=? AND `domain`=?", username, module.host);
+ 	if stmt then
+ 		for row in stmt:rows(true) do
+ 			return row.password;
+@@ -109,7 +109,7 @@ function provider.get_sasl_handler()
+ end
+ 
+ function provider.users()
+-	local stmt, err = getsql("SELECT `username` FROM `authreg` WHERE `realm`=?", module.host);
++	local stmt, err = getsql("SELECT `username` FROM `subscriber` WHERE `domain`=?", module.host);
+ 	if stmt then
+ 		local next, state = stmt:rows(true)
+ 		return function()
