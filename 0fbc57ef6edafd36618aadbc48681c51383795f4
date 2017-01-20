@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a622d24_39182784",
+        "filename": "debian/rules",
+        "patchSetId": 4
+      },
+      "lineNbr": 6,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2017-01-20T11:38:48Z",
+      "side": 1,
+      "message": "Actually, I was wondering why this was needed when patches should be automatically applied by dpkg-source, when I noticed that this is a native package. Any particular reason?",
+      "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a622d24_9c0fa92e",
+        "filename": "plugins/mod_auth_sql.lua",
+        "patchSetId": 4
+      },
+      "lineNbr": 11,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2017-01-20T11:38:48Z",
+      "side": 1,
+      "message": "This change is not present in the patches, but I guess it might be relevant?",
+      "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a622d24_3c2655bb",
+        "filename": "plugins/mod_auth_sql.lua",
+        "patchSetId": 4
+      },
+      "lineNbr": 74,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2017-01-20T11:38:48Z",
+      "side": 1,
+      "message": "But this is lost, and I think we do need.",
+      "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}

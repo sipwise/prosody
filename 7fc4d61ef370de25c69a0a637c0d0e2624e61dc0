@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a622d24_fc1cdd6c",
+        "filename": "plugins/mod_auth_sql.lua",
+        "patchSetId": 4
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2017-01-20T11:38:48Z",
+      "side": 0,
+      "message": "Neither is this, but this is just for debugging, so I guess it\u0027s fine.",
+      "revId": "7fc4d61ef370de25c69a0a637c0d0e2624e61dc0",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a622d24_dc19217b",
+        "filename": "plugins/mod_auth_sql.lua",
+        "patchSetId": 4
+      },
+      "lineNbr": 80,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2017-01-20T11:38:48Z",
+      "side": 0,
+      "message": "And neither are the formatting changes, which is fine, nor this other debug output, which I also guess can be dropped.",
+      "revId": "7fc4d61ef370de25c69a0a637c0d0e2624e61dc0",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
