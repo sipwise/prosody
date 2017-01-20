@@ -2,8 +2,8 @@ From: Andreas Granig <agranig@sipwise.com>
 Date:   Wed Aug 7 22:34:34 2013 +0200
 Subject: sipwise custom auth
 ---
---- a/plugins/mod_auth_sql.lua
-+++ b/plugins/mod_auth_sql.lua
+--- a/plugins/mod_auth_sql/mod_auth_sql.lua
++++ b/plugins/mod_auth_sql/mod_auth_sql.lua
 @@ -71,7 +71,7 @@ local function getsql(sql, ...)
  end
  

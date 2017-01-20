@@ -1,0 +1,13 @@
+mod_auth_sql
+mod_blocking
+mod_carbons
+mod_carbons_adhoc
+mod_carbons_copies
+mod_csi
+mod_filter_chatstates
+mod_limit_auth
+mod_log_auth
+mod_mam
+mod_smacks
+mod_throttle_presence
+mod_websocket

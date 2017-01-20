@@ -4,3 +4,17 @@
 
 %:
 	dh $@ --with quilt
+
+override_dh_auto_configure:
+	for readme in $$(grep ^mod_ debian/install | sed 's,[/ ].*,/README.*,'); do \
+	    if [ -f $$readme ]; then \
+	        cp $$readme debian/README_$$(dirname $$readme).$$(echo $$readme | cut -d '.' -f 2); \
+	    fi; \
+	done
+
+override_dh_install:
+	dh_install
+	find debian/ngcp-prosody-modules/ -name README.\* -delete
+
+override_dh_auto_clean:
+	rm -f debian/README_mod_*.*
