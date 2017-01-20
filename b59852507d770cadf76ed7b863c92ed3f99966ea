@@ -16,6 +16,24 @@
       "revId": "b59852507d770cadf76ed7b863c92ed3f99966ea",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "1a622d24_bc3ee527",
+        "filename": "debian/rules",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2017-01-20T13:00:25Z",
+      "side": 1,
+      "message": "yes, my mistake. Now should work",
+      "parentUuid": "1a622d24_1c871963",
+      "revId": "b59852507d770cadf76ed7b863c92ed3f99966ea",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
