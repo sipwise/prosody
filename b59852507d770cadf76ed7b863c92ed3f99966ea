@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a622d24_1c871963",
+        "filename": "debian/rules",
+        "patchSetId": 1
+      },
+      "lineNbr": 9,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2017-01-20T12:05:40Z",
+      "side": 1,
+      "message": "There does not seem to be any debian/install currently?",
+      "revId": "b59852507d770cadf76ed7b863c92ed3f99966ea",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
