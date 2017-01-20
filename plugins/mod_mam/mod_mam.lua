@@ -37,7 +37,21 @@ if global_default_policy ~= "roster" then
 	global_default_policy = module:get_option_boolean("default_archive_policy", global_default_policy);
 end
 
-local archive = module:require "sipwise_archive";
+local archive_store = "archive2";
+local archive = assert(module:open_store(archive_store, "archive"));
+
+if archive.name == "null" or not archive.find then
+	if not archive.find then
+		module:log("debug", "Attempt to open archive storage returned a valid driver but it does not seem to implement the storage API");
+		module:log("debug", "mod_%s does not support archiving", archive._provided_by or archive.name and "storage_"..archive.name.."(?)" or "<unknown>");
+	else
+		module:log("debug", "Attempt to open archive storage returned null driver");
+	end
+	module:log("debug", "See https://prosody.im/doc/storage and https://prosody.im/doc/archiving for more information");
+	module:log("info", "Using in-memory fallback archive driver");
+	archive = module:require "fallback_archive";
+end
+
 local cleanup;
 
 -- Handle prefs.
@@ -267,25 +281,11 @@ local function message_handler(event, c2s)
 	local orig_from = stanza.attr.from;
 	local orig_to = stanza.attr.to or orig_from;
 	-- Stanza without 'to' are treated as if it was to their own bare jid
-	local body = stanza:get_child("body");
-	local force_store = stanza:get_child("store", "urn:xmpp:hints");
 
-	if not force_store then
-		-- We store chat messages or normal messages that have a body
-		if not(orig_type == "chat" or (orig_type == "normal" and body)) then
-			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
-			return;
-		elseif (orig_type == 'chat' and not body) then
-			log("debug", "Not archiving stanza: %s (type), has no body",
-				stanza:top_tag());
-			return;
-		end
-	else
-		log("debug", "store hint detected");
-		if orig_type == 'error' then
-			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
-			return;
-		end
+	-- We store chat messages or normal messages that have a body
+	if not(orig_type == "chat" or (orig_type == "normal" and stanza:get_child("body")) ) then
+		log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
+		return;
 	end
 	-- or if hints suggest we shouldn't
 	if stanza:get_child("no-permanent-storage", "urn:xmpp:hints") -- The XEP needs to decide on "store" or "storage"
