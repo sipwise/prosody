@@ -2,6 +2,23 @@
   "comments": [
     {
       "key": {
+        "uuid": "1a622d24_dc8c8182",
+        "filename": "debian/patches/mod_auth_sql.path",
+        "patchSetId": 4
+      },
+      "lineNbr": 12,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2017-01-20T12:10:52Z",
+      "side": 1,
+      "message": "this is the changes we do. And I do see the proper SELECT here",
+      "revId": "0fbc57ef6edafd36618aadbc48681c51383795f4",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "1a622d24_39182784",
         "filename": "debian/rules",
         "patchSetId": 4
