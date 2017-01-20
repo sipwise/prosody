@@ -4,3 +4,17 @@
 
 %:
 	dh $@ --with quilt
+
+override_dh_auto_configure:
+	while read module ; do \
+        if [ -f plugins/$$module/README.markdown ] ; then \
+            cp plugins/$$module/README.markdown debian/README_$$module.markdown; \
+        fi; \
+	done < prosody-modules.list; \
+
+override_dh_install:
+	dh_install
+	find debian/ngcp-prosody-modules/ -name README.\* -delete
+
+override_dh_auto_clean:
+	rm -f debian/README_mod_*.*

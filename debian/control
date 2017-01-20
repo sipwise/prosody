@@ -43,12 +43,19 @@ Description: ngcp modules for the prosody Jabber/XMPP server
  The following modules are from prosody-modules:
  .
   * mod_auth_sql.lua: simple SQL Authentication module
+  * mod_blocking: allows the client to manage a simple
+    list of blocked JIDs
   * mod_carbons: XEP-0280: Message Carbons
-  * mod_log_auth: logs IP address in a failed authentication attempt
-  * mod_websocket.lua: XMPP over websocket
-  * mod_man: XEP-0313: Message Archive Management
+  * mod_carbons_adhoc
+  * mod_carbons_copies
   * mod_csi: XEP-0352: Client State Indication
-  * mod_throttle_presence: cuts down on presence traffic when clients
-    indicate they are inactive
   * mod_filter_chatstates: will filter Chat State Notifications out
     while the session is considered inactive
+  * mod_limit_auth: lets you put a per-IP limit on the number of
+    failed authentication attempts
+  * mod_log_auth: logs IP address in a failed authentication attempt
+  * mod_man: XEP-0313: Message Archive Management
+  * mod_smacks: XEP-0198: Stream Management
+  * mod_throttle_presence: cuts down on presence traffic when clients
+    indicate they are inactive
+  * mod_websocket.lua: XMPP over websocket
