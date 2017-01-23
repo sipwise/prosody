@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "1a622d24_dcf75c8b",
+        "filename": "plugins/mod_sipwise_pushd.lua",
+        "patchSetId": 1
+      },
+      "lineNbr": 194,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2017-01-23T16:42:00Z",
+      "side": 1,
+      "message": "what is the strange syntax... while accordingly to old code should be ok here.",
+      "range": {
+        "startLine": 194,
+        "startChar": 12,
+        "endLine": 194,
+        "endChar": 13
+      },
+      "revId": "d5491e273b2563f3a6882f3c4355022a32c5ba4b",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
