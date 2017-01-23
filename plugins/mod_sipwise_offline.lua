@@ -63,22 +63,33 @@ local function delete_db(node, host)
 	engine.conn:commit();
 end
 
+--- http://xmpp.org/extensions/xep-0160.html#types
+local function should_store(stanza)
+	local body = stanza:get_child("body");
+	local stanza_type = stanza.attr.type or "normal";
+	if (stanza_type == 'normal') then
+		return true;
+	elseif (stanza_type == 'chat' and body) then
+		return true;
+	end
+	return false;
+end
+
 -- save stanza
 local function handle_offline(event)
 	local origin, stanza = event.origin, event.stanza;
 	local to = stanza.attr.to;
-	local stanza_type = stanza.attr.type;
 	local node, host;
+	local stanza_info = stanza:top_tag();
 	if to then
 		node, host = jid_split(to)
 	else
 		node, host = origin.username, origin.host;
 	end
-	--- http://xmpp.org/extensions/xep-0160.html#types
-	if not stanza_type or (stanza_type == 'normal' or stanza_type == 'chat') then
+
+	if should_store(stanza) then
 		stanza.attr.stamp = datetime.datetime();
 		stanza.attr.stamp_legacy = datetime.legacy();
-		local stanza_info = stanza:top_tag();
 		local res = store_db(node, host, st.preserialize(stanza));
 		if not res or res.__affected ~= 1 then
 			module:log("error", "store_db failed for %s", stanza_info);
@@ -87,8 +98,8 @@ local function handle_offline(event)
 		end
 		stanza.attr.stamp, stanza.attr.stamp_legacy = nil, nil;
 	else
-		module:log("debug", "stanza type:%s not for offline, not stored",
-			tostring(stanza_type));
+		module:log("debug", "stanza[%s] not for offline, not stored",
+			stanza_info);
 	end
 	-- we should be the last
 	return true;
