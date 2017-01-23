@@ -20,6 +20,7 @@ local ut = require "util.table";
 local set = require "util.set";
 local st = require "util.stanza";
 
+local sipwise_offline = module:shared("sipwise_offline/sipwise_offline");
 local pushd_blocking = module:shared("sipwise_pushd_blocking/pushd_blocking");
 
 local pushd_config = {
@@ -184,13 +185,19 @@ end
 
 local function get_callee_badge(jid)
 	local node, host = jid_split(jid);
-	local result = datamanager.list_load(node, host, "offline");
-	if result then
-		module:log("debug", "%d offline messages for %s", #result, jid);
-		return #result
+	local result = 0;
+	if sipwise_offline.get_num then
+		result = sipwise_offline.get_num(node, host);
+	else
+		local offline = datamanager.list_load(node, host, "offline");
+		if offline then
+			result = #offline;
+		end
 	end
-	module:log("debug", "0 offline messages for %s", jid);
-	return 0
+	-- plus the one in process
+	result = result + 1;
+	module:log("debug", "%d offline messages for %s", result, jid);
+	return result;
 end
 
 local function get_message(stanza)

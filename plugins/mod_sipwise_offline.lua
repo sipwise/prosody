@@ -9,6 +9,8 @@ local params = module:get_option("sql", {});
 local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
+local sipwise_offline = module:shared("sipwise_offline");
+
 local serialize = require "util.serialization".serialize;
 local deserialize = require "util.serialization".deserialize;
 local st = require "util.stanza";
@@ -16,6 +18,11 @@ local datetime = require "util.datetime";
 local ipairs = ipairs;
 local jid_split = require "util.jid".split;
 
+local count_query=[[
+SELECT id
+FROM sipwise_offline
+WHERE domain = ? AND username = ?;
+]]
 local load_query =[[
 SELECT stanza
 FROM prosody.sipwise_offline
@@ -37,6 +44,15 @@ local function reconect_check()
 		module:log("debug", "DDBB reconecting");
 		engine:connect();
 	end
+end
+
+function sipwise_offline.get_num(node, host)
+	reconect_check();
+	local res = 0;
+	for _ in engine:select(count_query, host, node) do
+		res = res + 1;
+	end
+	return res;
 end
 
 local function load_db(node, host)
