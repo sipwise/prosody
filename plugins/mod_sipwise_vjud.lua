@@ -16,7 +16,6 @@ local dataforms_new = require "util.dataforms".new;
 local ut = require "util.table";
 local hosts = prosody.hosts;
 
-
 local form_layout = dataforms_new{
   title= 'User Directory Search';
   instructions = 'Please provide the following information to search for subscribers';
@@ -136,10 +135,19 @@ local params = module:get_option("auth_sql", {
 	host = "localhost"
 });
 local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+
+-- Reconnect to DB if necessary
+local function reconect_check()
+	if not engine.conn:ping() then
+		engine.conn = nil;
+		engine:connect();
+		engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+	end
+end
 
 local function normalize_number(user, host, number)
 	local locale_info = {};
+	reconect_check();
 	for row in engine:select(locale_query, user, host) do
 		locale_info["caller_"..row[1]] = row[2];
 	end
@@ -178,6 +186,7 @@ end
 
 local function search_by_number(number)
 	local results = {};
+	reconect_check();
 	module:log("debug", "search jids with number:[%s]", tostring(number));
 	for result in engine:select(lookup_query, number) do
 		table.insert(results, result[1].."@"..result[2]);
@@ -283,12 +292,6 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 		end
 
 		if search_number then
-			-- Reconnect to DB if necessary
-			if not engine.conn:ping() then
-				engine.conn = nil;
-				engine:connect();
-			end
-
 			local number = normalize_number(user, host, search_number);
 			local data = search_by_number(number);
 			reply = st.reply(stanza):query("jabber:iq:search");

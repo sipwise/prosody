@@ -52,9 +52,16 @@ local params = module:get_option("auth_sql", {
 	host = "localhost"
 });
 local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 
 module:add_feature("vcard-temp");
+
+local function reconect_check()
+	if not engine.conn:ping() then
+		engine.conn = nil;
+		engine:connect();
+		engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+	end
+end
 
 function vcard.get_subscriber_info(user, host)
 	if not hosts[host] or not hosts[host].users then
@@ -64,11 +71,7 @@ function vcard.get_subscriber_info(user, host)
 		return nil;
 	end
 	local info = { user = user, domain = host, aliases = {} };
-	-- Reconnect to DB if necessary
-	if not engine.conn:ping() then
-		engine.conn = nil;
-		engine:connect();
-	end
+	reconect_check();
 
 	for row in engine:select(display_usr_query, user, host) do
 		info['display_name'] = row[2];

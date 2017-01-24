@@ -6,11 +6,11 @@ Subject: TT#9314 mod_mam/sipwise_archive.lib: support emojis
 
 Change-Id: I44b17058f1bb0839de835151e6885a64e203fac1
 ---
- plugins/mod_mam/sipwise_archive.lib.lua | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ plugins/mod_mam/sipwise_archive.lib.lua | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/plugins/mod_mam/sipwise_archive.lib.lua b/plugins/mod_mam/sipwise_archive.lib.lua
-index 46166f8..be114b7 100644
+index 46166f8..44174e6 100644
 --- a/plugins/mod_mam/sipwise_archive.lib.lua
 +++ b/plugins/mod_mam/sipwise_archive.lib.lua
 @@ -9,7 +9,7 @@ local st = require "util.stanza";
@@ -18,7 +18,17 @@ index 46166f8..be114b7 100644
  local params = module:get_option("sql", {});
  local engine = mod_sql:create_engine(params);
 -engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
-+engine:execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';");
++
  local log = require "util.logger".init("sipwise_archive");
  local ut_tostring = require "util.table".table.tostring;
  local host = module.host;
+@@ -43,8 +43,8 @@ WHERE `username` = ?
+ local function reconect_check()
+ 	if not engine.conn:ping() then
+ 		engine.conn = nil;
+-		log("debug", "DDBB reconecting");
+ 		engine:connect();
++		engine:execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';");
+ 	end
+ end
+ 
