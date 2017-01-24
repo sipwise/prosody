@@ -112,14 +112,14 @@ local function reconect_check()
 		engine.conn = nil;
 		module:log("debug", "DDBB reconecting");
 		engine:connect();
+		engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 	end
 end
 
 -- returns the attribute_id of 'shared_buddylist_visiblility' preference
 local function lookup_buddy_id()
-	local res, row;
 	reconect_check();
-	res = engine:select(lookupt_preference_id_query,
+	local res = engine:select(lookupt_preference_id_query,
 		'shared_buddylist_visibility');
 	for row in res do
 		return row[1]
@@ -130,9 +130,8 @@ local buddylist_preference_id = lookup_buddy_id();
 
 -- returns the attribute_id of 'display_name' preference
 local function lookup_displayname_id()
-	local res, row;
 	reconect_check();
-	res = engine:select(lookupt_preference_id_query,
+	local res = engine:select(lookupt_preference_id_query,
 		'display_name');
 	for row in res do
 		return row[1]
@@ -143,14 +142,13 @@ local displayname_preference_id = lookup_displayname_id();
 
 
 -- "roster-load" callback
-function inject_roster_contacts(username, host, roster)
+local function inject_roster_contacts(username, host, roster)
 	module:log("debug", "Injecting group members to roster");
 	local bare_jid = username.."@"..host;
 	local account_id, groups, display_names;
 
 	-- returns the account_id of username@host subscriber
 	local function lookup_account_id()
-		local row;
 		--module:log("debug", "lookup user '%s@%s'", username, host);
 		reconect_check();
 		for row in engine:select(account_id_query, username, host) do
@@ -164,10 +162,9 @@ function inject_roster_contacts(username, host, roster)
 	-- returns a table with the pbx groups the subscriber
 	-- belongs to
 	local function lookup_user_groups()
-		local res, row;
 		local result = {};
 		reconect_check();
-		res = engine:select(lookup_user_group_query, account_id,
+		local res = engine:select(lookup_user_group_query, account_id,
 			username, host, buddylist_preference_id);
 		for row in res do
 			module:log("debug", "found group:'%s'",	row[1]);
@@ -179,10 +176,9 @@ function inject_roster_contacts(username, host, roster)
 	-- returns a table with the subscribers display_name
 	-- key is username@domain
 	local function lookup_users_dn()
-		local res, row;
 		local result = {};
 		reconect_check();
-		res = engine:select(lookup_with_dn_query, account_id,
+		local res = engine:select(lookup_with_dn_query, account_id,
 			displayname_preference_id);
 		for row in res do
 			result[row[1].."@"..row[2]] = row[3];
@@ -195,8 +191,7 @@ function inject_roster_contacts(username, host, roster)
 	-- if all is true a 'all' group will be added with all subscribers
 	-- if all_groups is false only the groups that bare_jid belongs will be added
 	local function lookup_groups(all, all_groups)
-		local row, res;
-		local user_groups = {};
+		local res;
 		local result = {};
 		if account_id then
 			reconect_check();
@@ -204,24 +199,23 @@ function inject_roster_contacts(username, host, roster)
 			if all_groups then
 				module:log("debug", "lookup_groups for account_id:%s",
 					account_id);
-				res = engine:select(lookup_query, account_id, buddylist_preference_id);
+				res = engine:select(lookup_query, account_id,
+					buddylist_preference_id);
 			else
 				module:log("debug", "lookup_groups for account_id:%s jid:%s@%s",
 					account_id, username, host);
-				user_groups = lookup_user_groups();
+				local user_groups = lookup_user_groups();
 				res =  engine:select(lookup_users_by_groups_query,
-					account_id, buddylist_preference_id, implode(",",user_groups));
+					account_id, buddylist_preference_id,
+					implode(",",user_groups));
 			end
 			for row in res do
-				--module:log("debug", "found group:'%s' user:'%s' domain:'%s'",
-				--	row[1], row[2], row[3]);
 				if not result[row[1]] then
 					result[row[1]] = {};
 				end
 				table.insert(result[row[1]], row[2].."@"..row[3]);
 			end
 			if all then
-				--module:log("debug", "lookup_all for account_id:%s", account_id);
 				result['all'] = {};
 				for row in engine:select(lookup_all_query,
 					account_id, buddylist_preference_id) do
@@ -238,7 +232,6 @@ function inject_roster_contacts(username, host, roster)
 	display_names = lookup_users_dn();
 
 	local function import_jids_to_roster(group_name)
-		local _, jid;
 		for _,jid in pairs(groups[group_name]) do
 			-- Add them to roster
 			module:log("debug", "processing jid %s in group %s",
