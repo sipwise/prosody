@@ -4,3 +4,4 @@ mod_auth_sql.path
 0003-TT-9303-mod_mam-sipwise_archive.lib-fix-crash-at-fin.patch
 0004-TT-9311-mod_mam-sipwise_archive.lib-full-username.patch
 0005-TT-9317-mod_mam-don-t-store-bodyless-chat-messages.patch
+0006-TT-9314-mod_mam-sipwise_archive.lib-support-emojis.patch

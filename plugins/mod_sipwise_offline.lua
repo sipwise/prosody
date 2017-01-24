@@ -7,7 +7,7 @@
 local mod_sql = module:require("sql");
 local params = module:get_option("sql", {});
 local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+engine:execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';");
 
 local sipwise_offline = module:shared("sipwise_offline");
 
