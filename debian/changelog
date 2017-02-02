@@ -1,3 +1,25 @@
+ngcp-prosody-modules (5.2.0.0+0~mr5.2.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [c52d6cd] MT#16059 mod_sipwise_vhosts_sql: fix debug output
+  * [bb1360f] TT#7560 mod_sipwise_offline
+  * [9e65f10] TT#7482 mod_man: support mam version 0.5 (urn:xmpp:mam:1)
+  * [754fb5b] TT#8297 mam: implement archive to DB
+  * [c2dec69] TT#8766 mod_sipwise_pushd: fix error when caller is not from local domain
+  * [9e93fb6] TT#9303 mod_mam: sipwise_archive.lib fix crash at find()
+  * [b17aec9] TT#9311 mod_mam/sipwise_archive.lib: full username
+  * [7fc4d61] TT#9317 mod_mam: don't store bodyless chat messages
+  * [0fbc57e] TT#9400 use quilt to maintain patches to upstream
+  * [e191475] TT#9402 refresh modules from upstream
+  * [11f3f0b] TT#9504 sipwise_offline: do not store bodyless chat messages
+  * [d5491e2] TT#9503 sipwise_pushd: wrong offline badge
+  * [937ff0f] TT#9314: support emojis for DB
+  * [ff4c2e0] TT#9551 set charset on reconnection
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Fri, 03 Feb 2017 00:41:42 +0100
+
 ngcp-prosody-modules (5.1.0.0+0~mr5.1.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
