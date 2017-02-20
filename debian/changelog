@@ -1,3 +1,12 @@
+ngcp-prosody-modules (5.0.2.1+0~mr5.0.2.1) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [0e7c6da] MT#16059 mod_sipwise_vhosts_sql: fix debug output
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 20 Feb 2017 21:05:46 +0100
+
 ngcp-prosody-modules (5.0.2.0+0~mr5.0.2.0) unstable; urgency=medium
 
   * New release.
