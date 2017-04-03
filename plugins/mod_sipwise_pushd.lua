@@ -28,7 +28,10 @@ local pushd_config = {
 	gcm = true,
 	apns = true,
 	call_sound = 'incoming_call.caf',
-	msg_sound  = 'incoming_message.caf'
+	msg_sound  = 'incoming_message.caf',
+	muc_config = {
+		force_persistent = true,
+	}
 };
 local sql_config = {
 	driver = "MySQL",
@@ -436,8 +439,27 @@ local function handle_msg(event)
 	return handle_muc_offline(event, room_jid);
 end
 
-module:hook("message/bare", handle_msg, 20);
-module:hook("message/offline/handle", handle_offline, 20);
+local function handle_muc_config(event)
+	module:log("debug", "event detected");
+	local room, fields = event.room, event.fields;
+	local name = fields['muc#roomconfig_roomname'] or room:get_name();
+	local persistent = fields['muc#roomconfig_persistentroom'];
+	if pushd_config.muc_config.force_persistent and not persistent then
+		fields['muc#roomconfig_persistentroom'] = true;
+		event.changed = true;
+		module:log("debug", "persistent room[%s] forced", name);
+	end
+end
+
+function module.add_host(module)
+	if module:get_host_type() == "component" then
+		module:hook("muc-config-submitted", handle_muc_config, 20);
+		module:log("debug", "muc-config at %s", module:get_host());
+	end
+	module:hook("message/bare", handle_msg, 20);
+	module:hook("message/offline/handle", handle_offline, 20);
+	module:log("debug", "hooked at %s", module:get_host());
+end
 
 function module.load()
 	pushd_config = module:get_option("pushd_config", pushd_config);
