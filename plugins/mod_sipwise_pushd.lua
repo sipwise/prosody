@@ -23,12 +23,17 @@ local st = require "util.stanza";
 local sipwise_offline = module:shared("sipwise_offline/sipwise_offline");
 local pushd_blocking = module:shared("sipwise_pushd_blocking/pushd_blocking");
 
+local muc_config = {
+	force_persistent = true,
+	owner_on_join = true
+};
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
 	gcm = true,
 	apns = true,
 	call_sound = 'incoming_call.caf',
-	msg_sound  = 'incoming_message.caf'
+	msg_sound  = 'incoming_message.caf',
+	muc_config = muc_config
 };
 local sql_config = {
 	driver = "MySQL",
@@ -436,11 +441,55 @@ local function handle_msg(event)
 	return handle_muc_offline(event, room_jid);
 end
 
+local function handle_muc_created(event)
+	local room = event.room;
+	if pushd_config.muc_config.force_persistent then
+		room:set_persistent(true);
+		module:log("debug", "persistent room[%s] forced on creation",
+			room:get_name());
+	end
+end
+
+local function handle_muc_config(event)
+	local room, fields = event.room, event.fields;
+	local name = fields['muc#roomconfig_roomname'] or room:get_name();
+	local persistent = fields['muc#roomconfig_persistentroom'];
+	if pushd_config.muc_config.force_persistent and not persistent then
+		fields['muc#roomconfig_persistentroom'] = true;
+		event.changed = true;
+		module:log("debug", "persistent room[%s] forced", name);
+	end
+end
+
+local function handle_muc_presence(event)
+	if not pushd_config.muc_config.owner_on_join then return; end
+	local stanza = event.stanza;
+	if stanza.attr.type == "unavailable" then return; end
+
+	local room = get_muc_room(stanza.attr.to);
+	if not room then return; end
+	local from_jid = jid_bare(stanza.attr.from);
+	local affiliation = room._affiliations[from_jid];
+	if affiliation ~= "owner" then
+		room._affiliations[from_jid] = "owner";
+		module:log("debug", "[%s] set affiliation to 'owner' for [%s]",
+			room:get_name(), from_jid);
+	end
+end
+
+if module:get_host_type() == "component" then
+	module:hook("muc-room-created", handle_muc_created, 20);
+	module:hook("muc-config-submitted", handle_muc_config, 20);
+	module:hook("presence/full", handle_muc_presence, 501);
+end
 module:hook("message/bare", handle_msg, 20);
 module:hook("message/offline/handle", handle_offline, 20);
 
 function module.load()
 	pushd_config = module:get_option("pushd_config", pushd_config);
+	if not pushd_config.muc_config then
+		pushd_config.muc_config = muc_config
+	end
 	sql_config   = module:get_option("auth_sql", sql_config);
 	engine = mod_sql:create_engine(sql_config);
 	engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
