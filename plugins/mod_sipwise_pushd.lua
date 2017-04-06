@@ -235,7 +235,7 @@ local function get_muc_info(stanza, caller_info)
 	end
 	room = room_host.rooms[muc['jid']];
 	if room then
-		muc['room'] = room:get_description() or 'Prosody chatroom';
+		muc['room'] = room:get_description() or muc['name'];
 		if muc_stanza then
 			muc['invite'] = format("Group chat invitation to '%s' from %s",
 				muc['room'], caller_info.display_name);
