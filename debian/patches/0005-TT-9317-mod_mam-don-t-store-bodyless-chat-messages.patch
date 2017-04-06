@@ -1,33 +1,38 @@
-From 7fc4d61ef370de25c69a0a637c0d0e2624e61dc0 Mon Sep 17 00:00:00 2001
+From 9e01a7a10fc1cd8a2d7dc6fe65bdccccf90f8668 Mon Sep 17 00:00:00 2001
 From: Victor Seva <vseva@sipwise.com>
 Date: Thu, 19 Jan 2017 17:13:12 +0100
 Subject: [PATCH] TT#9317 mod_mam: don't store bodyless chat messages
 
-* implement store hints https://prosody.im/issues/issue/750
+* implement store hints
+  https://prosody.im/issues/issue/750
+  mod_mam doesn't honor forced storage hint.
+  When a message without a body is received mod_mam always ignores the forced
+  storage hint, even if <store xmlns='urn:xmpp:hints'/> is present.
+  This can cause issue with OMEMO, which sends message elements without a body
 
 Change-Id: I590b1fb9bd95afdce6a117778052d11d8102f718
 ---
- plugins/mod_mam/mod_mam.lua | 24 +++++++++++++++++++-----
- 1 file changed, 19 insertions(+), 5 deletions(-)
+ plugins/mod_mam/mod_mam.lua | 23 +++++++++++++++++------
+ 1 file changed, 17 insertions(+), 6 deletions(-)
 
 diff --git a/plugins/mod_mam/mod_mam.lua b/plugins/mod_mam/mod_mam.lua
-index d7f4f61..bb604ed 100644
+index 13e0a0b..8d8ef62 100644
 --- a/plugins/mod_mam/mod_mam.lua
 +++ b/plugins/mod_mam/mod_mam.lua
-@@ -267,11 +267,25 @@ local function message_handler(event, c2s)
- 	local orig_from = stanza.attr.from;
- 	local orig_to = stanza.attr.to or orig_from;
- 	-- Stanza without 'to' are treated as if it was to their own bare jid
--
+@@ -269,19 +269,30 @@ local function message_handler(event, c2s)
+ 		return tag;
+ 	end);
+ 
 -	-- We store chat messages or normal messages that have a body
 -	if not(orig_type == "chat" or (orig_type == "normal" and stanza:get_child("body")) ) then
 -		log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
 -		return;
-+	local body = stanza:get_child("body");
-+	local force_store = stanza:get_child("store", "urn:xmpp:hints");
-+
-+	if not force_store then
+-	end
+-
+ 	-- or if hints suggest we shouldn't
+ 	if not stanza:get_child("store", "urn:xmpp:hints") then -- No hint telling us we should store
 +		-- We store chat messages or normal messages that have a body
++		local body = stanza:get_child("body");
 +		if not(orig_type == "chat" or (orig_type == "normal" and body)) then
 +			log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
 +			return;
@@ -36,6 +41,12 @@ index d7f4f61..bb604ed 100644
 +				stanza:top_tag());
 +			return;
 +		end
++
+ 		if stanza:get_child("no-permanent-store", "urn:xmpp:hints")
+ 			or stanza:get_child("no-store", "urn:xmpp:hints") then -- Hint telling us we should NOT store
+ 			log("debug", "Not archiving stanza: %s (hint)", stanza:top_tag());
+ 			return;
+ 		end
 +	else
 +		log("debug", "store hint detected");
 +		if orig_type == 'error' then
@@ -43,8 +54,8 @@ index d7f4f61..bb604ed 100644
 +			return;
 +		end
  	end
- 	-- or if hints suggest we shouldn't
- 	if stanza:get_child("no-permanent-storage", "urn:xmpp:hints") -- The XEP needs to decide on "store" or "storage"
+ 
+ 	-- Check with the users preferences
 -- 
 2.11.0
 

@@ -4,7 +4,6 @@
 -- This file is MIT/X11 licensed.
 
 local st = require"util.stanza";
-local xmlns_mam = "urn:xmpp:mam:0";
 
 local default_attrs = {
 	always = true, [true] = "always",
@@ -12,7 +11,7 @@ local default_attrs = {
 	roster = "roster",
 }
 
-local function tostanza(prefs)
+local function tostanza(prefs, xmlns_mam)
 	local default = prefs[false];
 	default = default_attrs[default];
 	local prefstanza = st.stanza("prefs", { xmlns = xmlns_mam, default = default });

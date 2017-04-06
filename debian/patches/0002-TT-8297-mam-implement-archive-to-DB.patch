@@ -1,27 +1,28 @@
-From 754fb5b63c5d3b4125ec80b8ecfdfdd3676242b3 Mon Sep 17 00:00:00 2001
+From 0dd1a7404c27b4a9352f196d52462b7ae6237590 Mon Sep 17 00:00:00 2001
 From: Victor Seva <vseva@sipwise.com>
 Date: Tue, 3 Jan 2017 17:14:49 +0100
 Subject: [PATCH] TT#8297 mam: implement archive to DB
 
 Change-Id: If9644ac66fdd257a430cfb7fa185230c77cd783e
 ---
- plugins/mod_mam/mod_mam.lua             |  16 +---
+ plugins/mod_mam/mod_mam.lua             |  17 +---
  plugins/mod_mam/sipwise_archive.lib.lua | 165 ++++++++++++++++++++++++++++++++
- 2 files changed, 166 insertions(+), 15 deletions(-)
+ 2 files changed, 166 insertions(+), 16 deletions(-)
  create mode 100644 plugins/mod_mam/sipwise_archive.lib.lua
 
 diff --git a/plugins/mod_mam/mod_mam.lua b/plugins/mod_mam/mod_mam.lua
-index dbdd92a..d7f4f61 100644
+index a4aa014..13e0a0b 100644
 --- a/plugins/mod_mam/mod_mam.lua
 +++ b/plugins/mod_mam/mod_mam.lua
-@@ -37,21 +37,7 @@ if global_default_policy ~= "roster" then
+@@ -40,22 +40,7 @@ if global_default_policy ~= "roster" then
  	global_default_policy = module:get_option_boolean("default_archive_policy", global_default_policy);
  end
  
--local archive_store = "archive2";
--local archive = assert(module:open_store(archive_store, "archive"));
+-local archive_store = module:get_option_string("archive_store", "archive2");
+-local archive = module:open_store(archive_store, "archive");
 -
 -if archive.name == "null" or not archive.find then
+-	-- luacheck: ignore 631
 -	if not archive.find then
 -		module:log("debug", "Attempt to open archive storage returned a valid driver but it does not seem to implement the storage API");
 -		module:log("debug", "mod_%s does not support archiving", archive._provided_by or archive.name and "storage_"..archive.name.."(?)" or "<unknown>");

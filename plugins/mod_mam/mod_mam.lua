@@ -3,9 +3,12 @@
 --
 -- This file is MIT/X11 licensed.
 
-local xmlns_mam     = "urn:xmpp:mam:0";
+local xmlns_mam0    = "urn:xmpp:mam:0";
+local xmlns_mam1    = "urn:xmpp:mam:1";
+local xmlns_mam2    = "urn:xmpp:mam:2";
 local xmlns_delay   = "urn:xmpp:delay";
 local xmlns_forward = "urn:xmpp:forward:0";
+local xmlns_st_id   = "urn:xmpp:sid:0";
 
 local um = require "core.usermanager";
 local st = require "util.stanza";
@@ -16,6 +19,7 @@ local prefs_to_stanza = module:require"mamprefsxml".tostanza;
 local prefs_from_stanza = module:require"mamprefsxml".fromstanza;
 local jid_bare = require "util.jid".bare;
 local jid_split = require "util.jid".split;
+local jid_prepped_split = require "util.jid".prepped_split;
 local dataform = require "util.dataforms".new;
 local host = module.host;
 
@@ -36,10 +40,11 @@ if global_default_policy ~= "roster" then
 	global_default_policy = module:get_option_boolean("default_archive_policy", global_default_policy);
 end
 
-local archive_store = "archive2";
-local archive = assert(module:open_store(archive_store, "archive"));
+local archive_store = module:get_option_string("archive_store", "archive2");
+local archive = module:open_store(archive_store, "archive");
 
 if archive.name == "null" or not archive.find then
+	-- luacheck: ignore 631
 	if not archive.find then
 		module:log("debug", "Attempt to open archive storage returned a valid driver but it does not seem to implement the storage API");
 		module:log("debug", "mod_%s does not support archiving", archive._provided_by or archive.name and "storage_"..archive.name.."(?)" or "<unknown>");
@@ -54,11 +59,12 @@ end
 local cleanup;
 
 -- Handle prefs.
-module:hook("iq/self/"..xmlns_mam..":prefs", function(event)
+local function handle_prefs(event)
 	local origin, stanza = event.origin, event.stanza;
+	local xmlns_mam = stanza.tags[1].attr.xmlns;
 	local user = origin.username;
 	if stanza.attr.type == "get" then
-		local prefs = prefs_to_stanza(get_prefs(user));
+		local prefs = prefs_to_stanza(get_prefs(user), xmlns_mam);
 		local reply = st.reply(stanza):add_child(prefs);
 		origin.send(reply);
 	else -- type == "set"
@@ -72,25 +78,36 @@ module:hook("iq/self/"..xmlns_mam..":prefs", function(event)
 		end
 	end
 	return true;
-end);
+end
+
+module:hook("iq/self/"..xmlns_mam0..":prefs", handle_prefs);
+module:hook("iq/self/"..xmlns_mam1..":prefs", handle_prefs);
+module:hook("iq/self/"..xmlns_mam2..":prefs", handle_prefs);
 
 local query_form = dataform {
-	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam; };
+	{ name = "FORM_TYPE"; type = "hidden"; value = xmlns_mam0; };
 	{ name = "with"; type = "jid-single"; };
 	{ name = "start"; type = "text-single" };
 	{ name = "end"; type = "text-single"; };
 };
 
 -- Serve form
-module:hook("iq-get/self/"..xmlns_mam..":query", function(event)
+local function handle_get_form(event)
 	local origin, stanza = event.origin, event.stanza;
-	origin.send(st.reply(stanza):add_child(query_form:form()));
+	local xmlns_mam = stanza.tags[1].attr.xmlns;
+	query_form[1].value = xmlns_mam;
+	origin.send(st.reply(stanza):query(xmlns_mam):add_child(query_form:form()));
 	return true;
-end);
+end
+
+module:hook("iq-get/self/"..xmlns_mam0..":query", handle_get_form);
+module:hook("iq-get/self/"..xmlns_mam1..":query", handle_get_form);
+module:hook("iq-get/self/"..xmlns_mam2..":query", handle_get_form);
 
 -- Handle archive queries
-module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
+local function handle_mam_query(event)
 	local origin, stanza = event.origin, event.stanza;
+	local xmlns_mam = stanza.tags[1].attr.xmlns;
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
 
@@ -101,6 +118,7 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	local form = query:get_child("x", "jabber:x:data");
 	if form then
 		local err;
+		query_form[1].value = xmlns_mam;
 		form, err = query_form:data(form);
 		if err then
 			origin.send(st.error_reply(stanza, "modify", "bad-request", select(2, next(err))));
@@ -129,7 +147,6 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	local before, after = qset and qset.before, qset and qset.after;
 	if type(before) ~= "string" then before = nil; end
 
-
 	-- Load all the data!
 	local data, err = archive:find(origin.username, {
 		start = qstart; ["end"] = qend; -- Time range
@@ -146,7 +163,9 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	end
 	local total = tonumber(err);
 
-	origin.send(st.reply(stanza));
+	if xmlns_mam == xmlns_mam0 then
+		origin.send(st.reply(stanza));
+	end
 	local msg_reply_attr = { to = stanza.attr.from, from = stanza.attr.to };
 
 	local results = {};
@@ -192,12 +211,23 @@ module:hook("iq-set/self/"..xmlns_mam..":query", function(event)
 	-- That's all folks!
 	module:log("debug", "Archive query %s completed", tostring(qid));
 
-	origin.send(st.message(msg_reply_attr)
-		:tag("fin", { xmlns = xmlns_mam, queryid = qid, complete = complete })
+	local fin;
+	if xmlns_mam == xmlns_mam0 then
+		fin = st.message(msg_reply_attr);
+	else
+		fin = st.reply(stanza);
+	end
+	do
+		fin:tag("fin", { xmlns = xmlns_mam, queryid = qid, complete = complete })
 			:add_child(rsm.generate {
-				first = first, last = last, count = total }));
+				first = first, last = last, count = total })
+	end
+	origin.send(fin);
 	return true;
-end);
+end
+module:hook("iq-set/self/"..xmlns_mam0..":query", handle_mam_query);
+module:hook("iq-set/self/"..xmlns_mam1..":query", handle_mam_query);
+module:hook("iq-set/self/"..xmlns_mam2..":query", handle_mam_query);
 
 local function has_in_roster(user, who)
 	local roster = rm_load_roster(user, host);
@@ -238,32 +268,46 @@ local function message_handler(event, c2s)
 	local orig_to = stanza.attr.to or orig_from;
 	-- Stanza without 'to' are treated as if it was to their own bare jid
 
+	-- Whos storage do we put it in?
+	local store_user = c2s and origin.username or jid_split(orig_to);
+	-- And who are they chatting with?
+	local with = jid_bare(c2s and orig_to or orig_from);
+
+	-- Filter out <stanza-id> that claim to be from us
+	stanza:maptags(function (tag)
+		if tag.name == "stanza-id" and tag.attr.xmlns == xmlns_st_id then
+			local by_user, by_host, res = jid_prepped_split(tag.attr.by);
+			if not res and by_host == module.host and by_user == store_user then
+				return nil;
+			end
+		end
+		return tag;
+	end);
+
 	-- We store chat messages or normal messages that have a body
 	if not(orig_type == "chat" or (orig_type == "normal" and stanza:get_child("body")) ) then
 		log("debug", "Not archiving stanza: %s (type)", stanza:top_tag());
 		return;
 	end
-	-- or if hints suggest we shouldn't
-	if stanza:get_child("no-permanent-storage", "urn:xmpp:hints") -- The XEP needs to decide on "store" or "storage"
-	or stanza:get_child("no-permanent-store", "urn:xmpp:hints")
-	or stanza:get_child("no-storage", "urn:xmpp:hints")
-	or stanza:get_child("no-store", "urn:xmpp:hints") then
-		log("debug", "Not archiving stanza: %s (hint)", stanza:top_tag());
-		return;
-	end
 
-	-- Whos storage do we put it in?
-	local store_user = c2s and origin.username or jid_split(orig_to);
-	-- And who are they chatting with?
-	local with = jid_bare(c2s and orig_to or orig_from);
+	-- or if hints suggest we shouldn't
+	if not stanza:get_child("store", "urn:xmpp:hints") then -- No hint telling us we should store
+		if stanza:get_child("no-permanent-store", "urn:xmpp:hints")
+			or stanza:get_child("no-store", "urn:xmpp:hints") then -- Hint telling us we should NOT store
+			log("debug", "Not archiving stanza: %s (hint)", stanza:top_tag());
+			return;
+		end
+	end
 
 	-- Check with the users preferences
 	if shall_store(store_user, with) then
 		log("debug", "Archiving stanza: %s", stanza:top_tag());
 
 		-- And stash it
-		local ok, id = archive:append(store_user, nil, stanza, time_now(), with);
+		local ok = archive:append(store_user, nil, stanza, time_now(), with);
 		if ok then
+			local id = ok;
+			stanza:tag("stanza-id", { xmlns = xmlns_st_id, by = store_user.."@"..host, id = id }):up();
 			if cleanup then cleanup[store_user] = true; end
 			module:fire_event("archive-message-added", { origin = origin, stanza = stanza, for_user = store_user, id = id });
 		end
@@ -275,6 +319,18 @@ end
 local function c2s_message_handler(event)
 	return message_handler(event, true);
 end
+
+local function strip_stanza_id(event)
+	local strip_by = jid_bare(event.origin.full_jid);
+	event.stanza:maptags(function(tag)
+		if not ( tag.attr.xmlns == xmlns_st_id and tag.attr.by == strip_by ) then
+			return tag;
+		end
+	end);
+end
+
+module:hook("pre-message/bare", strip_stanza_id, 0.01);
+module:hook("pre-message/full", strip_stanza_id, 0.01);
 
 local cleanup_after = module:get_option_string("archive_expires_after", "1w");
 local cleanup_interval = module:get_option_number("archive_cleanup_interval", 4 * 60 * 60);
@@ -296,14 +352,20 @@ if cleanup_after ~= "never" then
 		return false;
 	end
 
+	-- Set of known users to do message expiry for
+	-- Populated either below or when new messages are added
 	cleanup = {};
 
+	-- Iterating over users is not supported by all authentication modules
+	-- Catch and ignore error if not supported
 	pcall(function ()
+		-- If this works, then we schedule cleanup for all known users on startup
 		for user in um.users(module.host) do
 			cleanup[user] = true;
 		end
 	end);
 
+	-- At odd intervals, delete old messages for one user
 	module:add_timer(math.random(10, 60), function()
 		local user = next(cleanup);
 		if user then
@@ -330,9 +392,12 @@ module:hook("pre-message/full", c2s_message_handler, 2);
 module:hook("message/bare", message_handler, 2);
 module:hook("message/full", message_handler, 2);
 
-module:add_feature(xmlns_mam); -- COMPAT with XEP-0313 v 0.1
+module:add_feature(xmlns_mam0); -- COMPAT with XEP-0313 v 0.1
 
 module:hook("account-disco-info", function(event)
-	(event.reply or event.stanza):tag("feature", {var=xmlns_mam}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_mam0}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_mam1}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_mam2}):up();
+	(event.reply or event.stanza):tag("feature", {var=xmlns_st_id}):up();
 end);
 

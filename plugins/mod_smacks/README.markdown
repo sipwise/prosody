@@ -39,36 +39,45 @@ These events are: "smacks-ack-delayed", "smacks-hibernation-start" and
 "smacks-hibernation-end". See [mod_cloud_notify] for details on how this
 events are used there.
 
+Use prosody 0.10+ to have per user limits on allowed sessions in hibernation
+state and allowed sessions for which the h-value is kept even after the
+hibernation timed out.
+These are settable using `smacks_max_hibernated_sessions` and `smacks_max_old_sessions`.
+
 Configuration
 =============
 
-  Option                         Default           Description
-  ------------------------------ ----------------- -----------------------------------------------------------------------------------------
-  `smacks_hibernation_time`      300 (5 minutes)   The number of seconds a disconnected session should stay alive for (to allow reconnect)
-  `smacks_enabled_s2s`           false             Enable Stream Management on server connections? *Experimental*
-  `smacks_max_unacked_stanzas`   0                 How many stanzas to send before requesting acknowledgement
-  `smacks_max_ack_delay`         60 (1 minute)     The number of seconds an ack must be unanswered to trigger an "smacks-ack-delayed" event
+  Option                              Default           Description
+  ----------------------------------  ----------------- ------------------------------------------------------------------------------------------------------------------
+  `smacks_hibernation_time`           300 (5 minutes)   The number of seconds a disconnected session should stay alive for (to allow reconnect)
+  `smacks_enabled_s2s`                false             Enable Stream Management on server connections? *Experimental*
+  `smacks_max_unacked_stanzas`        0                 How many stanzas to send before requesting acknowledgement
+  `smacks_max_ack_delay`              60 (1 minute)     The number of seconds an ack must be unanswered to trigger an "smacks-ack-delayed" event
+  `smacks_max_hibernated_sessions`    10                The number of allowed sessions in hibernated state (limited per user)
+  `smacks_max_old_sessions`           10                The number of allowed sessions with timed out hibernation for which the h-value is still kept (limited per user)
 
 Compatibility
 =============
 
-  ----- -----------------------------------
+  ----- -----------------------------------------------------------------------------
   0.10  Works
-  0.9   Works
-  0.8   Works, use version [7693724881b3]
-  ----- -----------------------------------
+  0.9   Works, no per user limit of hibernated sessions
+  0.8   Works, no per user limit of hibernated sessions, use version [7693724881b3]
+  ----- -----------------------------------------------------------------------------
 
 
 Clients
 =======
 
-Clients that support XEP-0198:
+Clients that support [XEP-0198]:
 
--   Gajim
+-   Gajim (Linux, Windows, OS X)
+-   Conversations (Android)
+-   ChatSecure (iOS)
 -   Swift (but not resumption, as of version 2.0 and alphas of 3.0)
 -   Psi (in an unreleased branch)
--   Conversations
--   Yaxim
+-   Yaxim (Android)
+-   Monal (iOS)
 
 [7693724881b3]: //hg.prosody.im/prosody-modules/raw-file/7693724881b3/mod_smacks/mod_smacks.lua
 [mod_smacks_offline]: //modules.prosody.im/mod_smacks_offline

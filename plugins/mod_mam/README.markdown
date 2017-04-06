@@ -69,7 +69,7 @@ Query size limits
 This is the largest number of messages that are allowed to be retrieved
 in one request *page*. A query that does not fit in one page will
 include a reference to the next page, letting clients page through the
-result set. Setting large number is not recomended, as Prosody will be
+result set. Setting large number is not recommended, as Prosody will be
 blocked while processing the request and will not be able to do anything
 else.
 
@@ -117,12 +117,13 @@ default_archive_policy = true
 Compatibility
 =============
 
-  ------- ---------------
-  trunk   Works
-  0.10    Works
+  ------- -----------------------
+  trunk   Included with Prosody
+  0.10    Included with Prosody
   0.9     Works
   0.8     Does not work
-  ------- ---------------
+  ------- -----------------------
+
 
 [^1]: Might be changed to "mam" at some point
 

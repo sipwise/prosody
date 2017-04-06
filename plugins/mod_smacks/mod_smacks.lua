@@ -5,13 +5,15 @@
 -- Copyright (C) 2012-2015 Kim Alvefur
 -- Copyright (C) 2012 Thijs Alkemade
 -- Copyright (C) 2014 Florian Zeitz
--- Copyright (C) 2016 Thilo Molitor
+-- Copyright (C) 2016-2017 Thilo Molitor
 --
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
 --
 
 local st = require "util.stanza";
+local dep = require "util.dependencies";
+local cache = dep.softreq("util.cache");	-- only available in prosody 0.10+
 local uuid_generate = require "util.uuid".generate;
 
 local t_insert, t_remove = table.insert, table.remove;
@@ -35,18 +37,74 @@ local s2s_smacks = module:get_option_boolean("smacks_enabled_s2s", false);
 local s2s_resend = module:get_option_boolean("smacks_s2s_resend", false);
 local max_unacked_stanzas = module:get_option_number("smacks_max_unacked_stanzas", 0);
 local delayed_ack_timeout = module:get_option_number("smacks_max_ack_delay", 60);
+local max_hibernated_sessions = module:get_option_number("smacks_max_hibernated_sessions", 10);
+local max_old_sessions = module:get_option_number("smacks_max_old_sessions", 10);
 local core_process_stanza = prosody.core_process_stanza;
 local sessionmanager = require"core.sessionmanager";
 
 local c2s_sessions = module:shared("/*/c2s/sessions");
-local session_registry = {};
+
+local function init_session_cache(max_entries, evict_callback)
+	-- old prosody version < 0.10 (no limiting at all!)
+	if not cache then
+		local store = {};
+		return {
+			get = function(user, key) return store[key]; end;
+			set = function(user, key, value) store[key] = value; end;
+		};
+	end
+	
+	-- use per user limited cache for prosody >= 0.10
+	local stores = {};
+	return {
+			get = function(user, key)
+				if not stores[user] then
+					stores[user] = cache.new(max_entries, evict_callback);
+				end
+				return stores[user]:get(key);
+			end;
+			set = function(user, key, value)
+				if not stores[user] then stores[user] = cache.new(max_entries, evict_callback); end
+				stores[user]:set(key, value);
+				-- remove empty caches completely
+				if not stores[user]:count() then stores[user] = nil; end
+			end;
+		};
+end
+local old_session_registry = init_session_cache(max_old_sessions, nil);
+local session_registry = init_session_cache(max_hibernated_sessions, function(resumption_token, session)
+	if session.destroyed then return; end
+	session.log("warn", "User has too much hibernated sessions, removing oldest session (token: %s)", resumption_token);
+	-- store old session's h values on force delete
+	-- save only actual h value and username/host (for security)
+	old_session_registry.set(session.username, resumption_token, {
+		h = session.handled_stanza_count,
+		username = session.username,
+		host = session.host
+	});
+	return true;	-- allow session to be removed from full cache to make room for new one
+end);
+
+local function stoppable_timer(delay, callback)
+	local stopped = false;
+	return {
+		stop = function () stopped = true end;
+		module:add_timer(delay, function (t)
+			if stopped then return; end
+			return callback(t);
+		end);
+	};
+end
 
 local function delayed_ack_function(session)
-	-- fire event only when configured to do so
-	if delayed_ack_timeout > 0 and session.awaiting_ack and not session.outgoing_stanza_queue == nil then
-		session.log("debug", "Firing event 'smacks-ack-delayed', queue = %d", #session.outgoing_stanza_queue);
+	-- fire event only if configured to do so and our session is not hibernated or destroyed
+	if delayed_ack_timeout > 0 and session.awaiting_ack
+	and not session.hibernating and not session.destroyed then
+		session.log("debug", "Firing event 'smacks-ack-delayed', queue = %d",
+			session.outgoing_stanza_queue and #session.outgoing_stanza_queue or 0);
 		module:fire_event("smacks-ack-delayed", {origin = session, queue = session.outgoing_stanza_queue});
 	end
+	session.delayed_ack_timer = nil;
 end
 
 local function can_do_smacks(session, advertise_only)
@@ -80,6 +138,38 @@ module:hook("s2s-stream-features",
 			end
 		end);
 
+local function request_ack_if_needed(session, force)
+	local queue = session.outgoing_stanza_queue;
+	if session.awaiting_ack == nil then
+		if (#queue > max_unacked_stanzas and session.last_queue_count ~= #queue) or force then
+			session.log("debug", "Queuing <r> (in a moment)");
+			session.awaiting_ack = false;
+			session.awaiting_ack_timer = stoppable_timer(1e-06, function ()
+				if not session.awaiting_ack then
+					session.log("debug", "Sending <r> (inside timer, before send)");
+					(session.sends2s or session.send)(st.stanza("r", { xmlns = session.smacks }))
+					session.log("debug", "Sending <r> (inside timer, after send)");
+					session.awaiting_ack = true;
+					if not session.delayed_ack_timer then
+						session.delayed_ack_timer = stoppable_timer(delayed_ack_timeout, function()
+							delayed_ack_function(session);
+						end);
+					end
+				end
+			end);
+		end
+		-- Trigger "smacks-ack-delayed"-event if we added new (ackable) stanzas to the outgoing queue
+		-- and there isn't already a timer for this event running.
+		-- If we wouldn't do this, stanzas added to the queue after the first "smacks-ack-delayed"-event
+		-- would not trigger this event (again).
+		if #queue > max_unacked_stanzas and session.awaiting_ack and session.delayed_ack_timer == nil then
+			session.log("debug", "Calling delayed_ack_function directly (still waiting for ack)");
+			delayed_ack_function(session);
+		end
+	end
+	session.last_queue_count = #queue;
+end
+
 local function outgoing_stanza_filter(stanza, session)
 	local is_stanza = stanza.attr and not stanza.attr.xmlns and not stanza.name:find":";
 	if is_stanza and not stanza._cached then -- Stanza in default stream namespace
@@ -97,21 +187,7 @@ local function outgoing_stanza_filter(stanza, session)
 			session.log("debug", "hibernating, stanza queued");
 			return nil;
 		end
-		if #queue > max_unacked_stanzas and session.awaiting_ack == nil then
-			session.log("debug", "Queuing <r> (in a moment)");
-			session.awaiting_ack = false;
-			session.awaiting_ack_timer = module:add_timer(1e-06, function ()
-				if not session.awaiting_ack then
-					session.log("debug", "Sending <r> (before send)");
-					(session.sends2s or session.send)(st.stanza("r", { xmlns = session.smacks }))
-					session.log("debug", "Sending <r> (after send)");
-					session.awaiting_ack = true;
-					session.delayed_ack_timer = module:add_timer(delayed_ack_timeout, function()
-						delayed_ack_function(session);
-					end);
-				end
-			end);
-		end
+		request_ack_if_needed(session, false);
 	end
 	return stanza;
 end
@@ -135,8 +211,13 @@ local function wrap_session_out(session, resume)
 	local session_close = session.close;
 	function session.close(...)
 		if session.resumption_token then
-			session_registry[session.resumption_token] = nil;
+			session_registry.set(session.username, session.resumption_token, nil);
+			old_session_registry.set(session.username, session.resumption_token, nil);
 			session.resumption_token = nil;
+		end
+		-- send out last ack as per revision 1.5.2 of XEP-0198
+		if session.smacks and session.conn then
+			(session.sends2s or session.send)(st.stanza("a", { xmlns = session.smacks, h = tostring(session.handled_stanza_count) }));
 		end
 		return session_close(...);
 	end
@@ -175,7 +256,7 @@ function handle_enable(session, stanza, xmlns_sm)
 	local resume = stanza.attr.resume;
 	if resume == "true" or resume == "1" then
 		resume_token = uuid_generate();
-		session_registry[resume_token] = session;
+		session_registry.set(session.username, resume_token, session);
 		session.resumption_token = resume_token;
 	end
 	(session.sends2s or session.send)(st.stanza("enabled", { xmlns = xmlns_sm, id = resume_token, resume = resume }));
@@ -186,7 +267,7 @@ module:hook_stanza(xmlns_sm3, "enable", function (session, stanza) return handle
 
 module:hook_stanza("http://etherx.jabber.org/streams", "features",
 		function (session, stanza)
-			module:add_timer(1e-6, function ()
+			stoppable_timer(1e-6, function ()
 				if can_do_smacks(session) then
 					if stanza:get_child("sm", xmlns_sm3) then
 						session.sends2s(st.stanza("enable", sm3_attr));
@@ -236,9 +317,10 @@ function handle_a(origin, stanza)
 	end
 	if origin.delayed_ack_timer then
 		origin.delayed_ack_timer:stop();
+		origin.delayed_ack_timer = nil;
 	end
 	-- Remove handled stanzas from outgoing_stanza_queue
-	--log("debug", "ACK: h=%s, last=%s", stanza.attr.h or "", origin.last_acknowledged_stanza or "");
+	-- origin.log("debug", "ACK: h=%s, last=%s", stanza.attr.h or "", origin.last_acknowledged_stanza or "");
 	local h = tonumber(stanza.attr.h);
 	if not h then
 		origin:close{ condition = "invalid-xml"; text = "Missing or invalid 'h' attribute"; };
@@ -258,6 +340,7 @@ function handle_a(origin, stanza)
 	end
 	origin.log("debug", "#queue = %d", #queue);
 	origin.last_acknowledged_stanza = origin.last_acknowledged_stanza + handled_stanza_count;
+	request_ack_if_needed(origin, false)
 	return true;
 end
 module:hook_stanza(xmlns_sm2, "a", handle_a);
@@ -314,7 +397,13 @@ module:hook("pre-resource-unbind", function (event)
 				-- otherwise the session resumed and re-hibernated.
 				and session.hibernating == hibernate_time then
 					session.log("debug", "Destroying session for hibernating too long");
-					session_registry[session.resumption_token] = nil;
+					session_registry.set(session.username, session.resumption_token, nil);
+					-- save only actual h value and username/host (for security)
+					old_session_registry.set(session.username, session.resumption_token, {
+						h = session.handled_stanza_count,
+						username = session.username,
+						host = session.host
+					});
 					session.resumption_token = nil;
 					sessionmanager.destroy_session(session);
 				else
@@ -323,7 +412,6 @@ module:hook("pre-resource-unbind", function (event)
 			end);
 			return true; -- Postpone destruction for now
 		end
-
 	end
 end);
 
@@ -356,12 +444,21 @@ function handle_resume(session, stanza, xmlns_sm)
 	end
 
 	local id = stanza.attr.previd;
-	local original_session = session_registry[id];
+	local original_session = session_registry.get(session.username, id);
 	if not original_session then
 		session.log("debug", "Tried to resume non-existent session with id %s", id);
-		session.send(st.stanza("failed", { xmlns = xmlns_sm })
-			:tag("item-not-found", { xmlns = xmlns_errors })
-		);
+		local old_session = old_session_registry.get(session.username, id);
+		if old_session and session.username == old_session.username
+		and session.host == old_session.host
+		and old_session.h then
+			session.send(st.stanza("failed", { xmlns = xmlns_sm, h = tostring(old_session.h) })
+				:tag("item-not-found", { xmlns = xmlns_errors })
+			);
+		else
+			session.send(st.stanza("failed", { xmlns = xmlns_sm })
+				:tag("item-not-found", { xmlns = xmlns_errors })
+			);
+		end;
 	elseif session.username == original_session.username
 	and session.host == original_session.host then
 		session.log("debug", "mod_smacks resuming existing session...");
@@ -375,6 +472,7 @@ function handle_resume(session, stanza, xmlns_sm)
 		original_session.ip = session.ip;
 		original_session.conn = session.conn;
 		original_session.send = session.send;
+		original_session.close = session.close;
 		original_session.filter = session.filter;
 		original_session.filter.session = original_session;
 		original_session.filters = session.filters;
@@ -387,7 +485,7 @@ function handle_resume(session, stanza, xmlns_sm)
 		-- Similar for connlisteners
 		c2s_sessions[session.conn] = original_session;
 
-		session.send(st.stanza("resumed", { xmlns = xmlns_sm,
+		original_session.send(st.stanza("resumed", { xmlns = xmlns_sm,
 			h = original_session.handled_stanza_count, previd = id }));
 
 		-- Fake an <a> with the h of the <resume/> from the client
@@ -397,12 +495,17 @@ function handle_resume(session, stanza, xmlns_sm)
 		-- Ok, we need to re-send any stanzas that the client didn't see
 		-- ...they are what is now left in the outgoing stanza queue
 		local queue = original_session.outgoing_stanza_queue;
-		module:fire_event("smacks-hibernation-end", {origin = session, queue = queue});
-		session.log("debug", "#queue = %d", #queue);
+		module:fire_event("smacks-hibernation-end", {origin = session, resumed = original_session, queue = queue});
+		original_session.log("debug", "#queue = %d", #queue);
 		for i=1,#queue do
-			session.send(queue[i]);
+			original_session.send(queue[i]);
 		end
-		session.log("debug", "#queue = %d -- after send", #queue);
+		original_session.log("debug", "#queue = %d -- after send", #queue);
+		function session.send(stanza)
+			session.log("warn", "Tried to send stanza on old session migrated by smacks resume (maybe there is a bug?): %s", tostring(stanza));
+			return false;
+		end
+		request_ack_if_needed(original_session, true);
 	else
 		module:log("warn", "Client %s@%s[%s] tried to resume stream for %s@%s[%s]",
 			session.username or "?", session.host or "?", session.type,
@@ -424,6 +527,7 @@ local function handle_read_timeout(event)
 			end
 			if session.delayed_ack_timer then
 				session.delayed_ack_timer:stop();
+				session.delayed_ack_timer = nil;
 			end
 			return false; -- Kick the session
 		end
@@ -431,9 +535,11 @@ local function handle_read_timeout(event)
 		session.awaiting_ack = false;
 		(session.sends2s or session.send)(st.stanza("r", { xmlns = session.smacks }));
 		session.awaiting_ack = true;
-		session.delayed_ack_timer = module:add_timer(delayed_ack_timeout, function()
-			delayed_ack_function(session);
-		end);
+		if not session.delayed_ack_timer then
+			session.delayed_ack_timer = stoppable_timer(delayed_ack_timeout, function()
+				delayed_ack_function(session);
+			end);
+		end
 		return true;
 	end
 end
