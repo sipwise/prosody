@@ -1,0 +1,54 @@
+From: Victor Seva <vseva@sipwise.com>
+Date: Fri, 7 Apr 2017 11:12:23 +0200
+Subject: TT#14278 mam: add all supported versions to disco
+
+* sipwise app needs 'urn:xmpp:mam:1' at disco result
+* upstream did implement supporting urn:xmpp_mam:[0-2] slightly different
+  looking through the code y noticed that if the disco has no 'to' it shows
+  the versions of mam supported
+
+<!-- Out Fri 07 Apr 2017 10:53:38 AM CEST -->
+<iq type='get'
+id='info1'>
+<query xmlns='http://jabber.org/protocol/disco#info'/>
+</iq>
+
+<!-- In Fri 07 Apr 2017 10:53:38 AM CEST -->
+<iq id='info1' type='result' to='vseva@sipwise.com/Gajim' from='vseva@sipwise.com'>
+<query xmlns='http://jabber.org/protocol/disco#info';>
+<feature var='urn:xmpp:mam:0'/>
+<feature var='urn:xmpp:mam:1'/>
+<feature var='urn:xmpp:mam:2'/>
+<feature var='urn:xmpp:sid:0'/>
+<identity type='pep' category='pubsub'/>
+<feature var='http://jabber.org/protocol/pubsub#publish'/>
+</query>
+</iq>
+
+  That is not what the XEP 0313 says:
+  <quote>
+  7. Determining support
+  If a server or other entity hosts archives and supports MAM queries, it MUST
+  advertise the 'urn:xmpp:mam:2' feature in response to Service Discovery
+  (XEP-0030) [15] requests made to archiving JIDs
+  (i.e. JIDs hosting an archive, such as users' bare JIDs):
+  </quote>
+
+Change-Id: Ib79b6f2f60f71a80030bbd12b2eb893b60ac025d
+---
+ plugins/mod_mam/mod_mam.lua | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/plugins/mod_mam/mod_mam.lua b/plugins/mod_mam/mod_mam.lua
+index a4aa014..6d1a658 100644
+--- a/plugins/mod_mam/mod_mam.lua
++++ b/plugins/mod_mam/mod_mam.lua
+@@ -393,6 +393,8 @@ module:hook("message/bare", message_handler, 2);
+ module:hook("message/full", message_handler, 2);
+ 
+ module:add_feature(xmlns_mam0); -- COMPAT with XEP-0313 v 0.1
++module:add_feature(xmlns_mam1); -- COMPAT with XEP-0313 v 0.5
++module:add_feature(xmlns_mam2); -- COMPAT with XEP-0313 v 0.6
+ 
+ module:hook("account-disco-info", function(event)
+ 	(event.reply or event.stanza):tag("feature", {var=xmlns_mam0}):up();
