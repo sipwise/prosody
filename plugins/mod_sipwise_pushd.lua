@@ -477,10 +477,29 @@ local function handle_muc_presence(event)
 	end
 end
 
+local function handle_muc_presence_out(event)
+	local stanza = event.stanza;
+	local muc_stanza = stanza:get_child('x',
+		'http://jabber.org/protocol/muc#user');
+
+	if muc_stanza then
+		local item = muc_stanza:get_child('item');
+		if not item.nick and stanza.attr.from then
+			local nick = select(3, jid_split(stanza.attr.from));
+			if nick then
+				item.attr.nick = nick;
+				module:log("debug", "added nick[%s] tag", nick);
+			end
+		end
+	end
+end
+
 if module:get_host_type() == "component" then
 	module:hook("muc-room-created", handle_muc_created, 20);
 	module:hook("muc-config-submitted", handle_muc_config, 20);
 	module:hook("presence/full", handle_muc_presence, 501);
+else
+	module:hook("presence/full", handle_muc_presence_out, 501);
 end
 module:hook("message/bare", handle_msg, 20);
 module:hook("message/offline/handle", handle_offline, 20);
