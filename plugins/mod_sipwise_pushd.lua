@@ -205,6 +205,18 @@ local function get_callee_badge(jid)
 	return result;
 end
 
+local function is_invite(stanza)
+	if stanza:get_child('x', 'http://jabber.org/protocol/muc#user') then
+		return true
+	end
+end
+
+local function is_attachment(stanza)
+	if stanza:get_child('x', 'jabber:x:oob') then
+		return true
+	end
+end
+
 local function get_message(stanza)
 	local body = stanza:get_child('body');
 	if body then
@@ -314,15 +326,15 @@ local function handle_offline(event)
 			muc = get_muc_info(stanza, caller_info);
 		else
 			msg.data_type = 'message';
-			local invite = stanza:get_child('x',
-				'http://jabber.org/protocol/muc#user');
 			caller_jid = format("%s@%s",
 				origin.username or caller.username,
 				origin.host or caller.host);
-			if invite then
+			if is_invite(stanza) then
 				msg.data_type = 'invite';
 				caller_jid = jid_bare(invite:get_child('invite').attr.from) or
 					caller_jid;
+			elseif is_attachment(stanza) then
+				msg.data_message = "new attachment";
 			end
 			caller_info = get_caller_info(caller_jid, caller_defaults) or
 				caller_defaults;
