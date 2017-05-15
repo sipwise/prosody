@@ -49,8 +49,16 @@ local function init_session_cache(max_entries, evict_callback)
 	if not cache then
 		local store = {};
 		return {
-			get = function(user, key) return store[key]; end;
-			set = function(user, key, value) store[key] = value; end;
+			get = function(user, key)
+				if not user then return nil; end
+				if not key then return nil; end
+				return store[key];
+			end;
+			set = function(user, key, value)
+				if not user then return nil; end
+				if not key then return nil; end
+				store[key] = value;
+			end;
 		};
 	end
 	
@@ -58,12 +66,16 @@ local function init_session_cache(max_entries, evict_callback)
 	local stores = {};
 	return {
 			get = function(user, key)
+				if not user then return nil; end
+				if not key then return nil; end
 				if not stores[user] then
 					stores[user] = cache.new(max_entries, evict_callback);
 				end
 				return stores[user]:get(key);
 			end;
 			set = function(user, key, value)
+				if not user then return nil; end
+				if not key then return nil; end
 				if not stores[user] then stores[user] = cache.new(max_entries, evict_callback); end
 				stores[user]:set(key, value);
 				-- remove empty caches completely
@@ -73,7 +85,7 @@ local function init_session_cache(max_entries, evict_callback)
 end
 local old_session_registry = init_session_cache(max_old_sessions, nil);
 local session_registry = init_session_cache(max_hibernated_sessions, function(resumption_token, session)
-	if session.destroyed then return; end
+	if session.destroyed then return true; end		-- destroyed session can always be removed from cache
 	session.log("warn", "User has too much hibernated sessions, removing oldest session (token: %s)", resumption_token);
 	-- store old session's h values on force delete
 	-- save only actual h value and username/host (for security)
@@ -158,15 +170,17 @@ local function request_ack_if_needed(session, force)
 				end
 			end);
 		end
-		-- Trigger "smacks-ack-delayed"-event if we added new (ackable) stanzas to the outgoing queue
-		-- and there isn't already a timer for this event running.
-		-- If we wouldn't do this, stanzas added to the queue after the first "smacks-ack-delayed"-event
-		-- would not trigger this event (again).
-		if #queue > max_unacked_stanzas and session.awaiting_ack and session.delayed_ack_timer == nil then
-			session.log("debug", "Calling delayed_ack_function directly (still waiting for ack)");
-			delayed_ack_function(session);
-		end
 	end
+	
+	-- Trigger "smacks-ack-delayed"-event if we added new (ackable) stanzas to the outgoing queue
+	-- and there isn't already a timer for this event running.
+	-- If we wouldn't do this, stanzas added to the queue after the first "smacks-ack-delayed"-event
+	-- would not trigger this event (again).
+	if #queue > max_unacked_stanzas and session.awaiting_ack and session.delayed_ack_timer == nil then
+		session.log("debug", "Calling delayed_ack_function directly (still waiting for ack)");
+		delayed_ack_function(session);
+	end
+	
 	session.last_queue_count = #queue;
 end
 

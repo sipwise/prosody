@@ -39,12 +39,10 @@ Change-Id: Ib79b6f2f60f71a80030bbd12b2eb893b60ac025d
  plugins/mod_mam/mod_mam.lua | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/plugins/mod_mam/mod_mam.lua b/plugins/mod_mam/mod_mam.lua
-index a4aa014..6d1a658 100644
 --- a/plugins/mod_mam/mod_mam.lua
 +++ b/plugins/mod_mam/mod_mam.lua
-@@ -393,6 +393,8 @@ module:hook("message/bare", message_handler, 2);
- module:hook("message/full", message_handler, 2);
+@@ -393,6 +393,8 @@ module:hook("message/bare", message_hand
+ module:hook("message/full", message_handler, 0);
  
  module:add_feature(xmlns_mam0); -- COMPAT with XEP-0313 v 0.1
 +module:add_feature(xmlns_mam1); -- COMPAT with XEP-0313 v 0.5
