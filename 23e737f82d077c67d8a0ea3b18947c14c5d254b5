@@ -22,6 +22,30 @@
       "revId": "23e737f82d077c67d8a0ea3b18947c14c5d254b5",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "3a1371a2_ad4a2525",
+        "filename": "plugins/mod_sipwise_pushd.lua",
+        "patchSetId": 1
+      },
+      "lineNbr": 337,
+      "author": {
+        "id": 1000002
+      },
+      "writtenOn": "2017-05-15T09:27:48Z",
+      "side": 1,
+      "message": "that is another ticket. There are plenty of places here, not only this message",
+      "parentUuid": "3a1371a2_4dcf31b1",
+      "range": {
+        "startLine": 337,
+        "startChar": 24,
+        "endLine": 337,
+        "endChar": 38
+      },
+      "revId": "23e737f82d077c67d8a0ea3b18947c14c5d254b5",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
