@@ -1,3 +1,21 @@
+ngcp-prosody-modules (5.3.1.0+0~mr5.3.1.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [fb99302] TT#13055 mod_sipwise_pushd: support muc_config
+  * [5b993fc] TT#14103 update upstream modules to 2e1a4740adee
+  * [0117591] TT#14278 mam: add all supported versions to disco
+  * [d6f87e7] TT#14258 mod_sipwise_pushd: add nick attribute for MUC presence
+  * [23e737f] TT#15822 mod_sipwise_pushd: detect attachment message
+  * [ef87c7b] TT#14103 update upstream modules to 9b43b7fc3558
+  * [a70b099] TT#16400 support exclude config muc rooms from sending push notifications
+
+  [ Andreas Granig ]
+  * [0521a03] TT#14099 Send muc room name in push
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 16 May 2017 21:43:03 +0200
+
 ngcp-prosody-modules (5.3.0.0+0~mr5.3.0.0) unstable; urgency=medium
 
   * New release.
