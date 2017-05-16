@@ -25,7 +25,8 @@ local pushd_blocking = module:shared("sipwise_pushd_blocking/pushd_blocking");
 
 local muc_config = {
 	force_persistent = true,
-	owner_on_join = true
+	owner_on_join = true,
+	exclude = {}
 };
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
@@ -423,6 +424,9 @@ local function handle_muc_offline(event, room_jid)
 		if not muc_room then
 			module:log("debug", "muc room[%s] not here. Nothing to do",
 				room_jid);
+			return nil;
+		elseif ut.table.contains(pushd_config.muc_config.exclude, room_jid) then
+			module:log("debug", "muc room[%s] excluded from pushd", room_jid);
 			return nil;
 		end
 
