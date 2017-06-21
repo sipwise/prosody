@@ -365,6 +365,7 @@ local function handle_offline(event)
 		end
 		message = {
 			data_message = get_message(stanza),
+			data_full_message = string(stanza),
 			callee = node,
 			domain = host,
 		};
