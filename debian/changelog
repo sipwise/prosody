@@ -1,3 +1,12 @@
+ngcp-prosody-modules (5.4.1.0+0~mr5.4.1.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [1057e3a] TT#17657 mod_sipwise_pushd: send full_message field to pushd
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 17 Jul 2017 22:47:06 +0200
+
 ngcp-prosody-modules (5.4.0.0+0~mr5.4.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
