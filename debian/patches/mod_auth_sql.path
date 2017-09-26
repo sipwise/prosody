@@ -3,23 +3,30 @@ Date: Wed, 7 Aug 2013 22:34:34 +0200
 Subject: sipwise custom auth
 
 ---
- plugins/mod_auth_sql/mod_auth_sql.lua | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ plugins/mod_auth_sql/mod_auth_sql.lua | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
 
 diff --git a/plugins/mod_auth_sql/mod_auth_sql.lua b/plugins/mod_auth_sql/mod_auth_sql.lua
-index 2947a91..8ad8f4a 100644
+index 2947a91..237ad28 100644
 --- a/plugins/mod_auth_sql/mod_auth_sql.lua
 +++ b/plugins/mod_auth_sql/mod_auth_sql.lua
-@@ -71,7 +71,7 @@ local function getsql(sql, ...)
+@@ -71,10 +71,13 @@ local function getsql(sql, ...)
  end
  
  local function get_password(username)
 -	local stmt, err = getsql("SELECT `password` FROM `authreg` WHERE `username`=? AND `realm`=?", username, module.host);
-+	local stmt, err = getsql("SELECT `password` FROM `subscriber` WHERE `username`=? AND `domain`=?", username, module.host);
++	local stmt, err = getsql("SELECT `s`.`password`, COALESCE(`p`.`value`, 0) AS `locklevel` FROM `subscriber` AS `s` LEFT JOIN usr_preferences AS `p` ON `p`.`username` = `s`.`username` AND `p`.`domain` = `s`.`domain` AND `p`.`attribute` = 'lock' WHERE `s`.`username`= ? AND `s`.`domain`= ?", username, module.host);
  	if stmt then
  		for row in stmt:rows(true) do
- 			return row.password;
-@@ -109,7 +109,7 @@ function provider.get_sasl_handler()
+-			return row.password;
++			local locklevel = 0 + row.locklevel;
++			if locklevel < 4 then
++				return row.password;
++			end
+ 		end
+ 	end
+ end
+@@ -109,7 +112,7 @@ function provider.get_sasl_handler()
  end
  
  function provider.users()
