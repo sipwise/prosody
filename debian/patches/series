@@ -1,1 +1,2 @@
 mod_auth_sql.path
+0007-TT-20350-mod_auth_sql-check-subscriber-lock-level.patch
