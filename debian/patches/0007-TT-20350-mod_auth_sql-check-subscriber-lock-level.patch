@@ -1,0 +1,18 @@
+--- a/plugins/mod_auth_sql/mod_auth_sql.lua
++++ b/plugins/mod_auth_sql/mod_auth_sql.lua
+@@ -71,10 +71,13 @@
+ end
+ 
+ local function get_password(username)
+-	local stmt, err = getsql("SELECT `password` FROM `subscriber` WHERE `username`=? AND `domain`=?", username, module.host);
++	local stmt, err = getsql("SELECT `s`.`password`, COALESCE(`p`.`value`, 0) AS `locklevel` FROM `subscriber` AS `s` LEFT JOIN usr_preferences AS `p` ON `p`.`username` = `s`.`username` AND `p`.`domain` = `s`.`domain` AND `p`.`attribute` = 'lock' WHERE `s`.`username`= ? AND `s`.`domain`= ?", username, module.host);
+ 	if stmt then
+ 		for row in stmt:rows(true) do
+-			return row.password;
++			local locklevel = 0 + row.locklevel;
++			if locklevel < 4 then
++				return row.password;
++			end
+ 		end
+ 	end
+ end
