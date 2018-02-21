@@ -118,7 +118,7 @@ function table.implode(delimiter, list, quoter)
     for i = 2, len do
         str = str .. delimiter .. quoter .. list[i] .. quoter
     end
-    return string
+    return str
 end
 
 function table.keys(tbl)
