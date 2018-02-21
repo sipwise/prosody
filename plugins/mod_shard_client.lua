@@ -7,13 +7,16 @@
 --
 module:set_global();
 local socket = require "socket"
-
+local ut = require "util.table";
 local logger = require "util.logger";
 local st = require "util.stanza";
 local new_xmpp_stream = require "util.xmppstream".new;
 local wrapclient = require "net.server".wrapclient;
 local log = module._log;
-
+local shard_name = module:get_option("shard_name", nil);
+if not shard_name then
+    error("shard_name not configured", 0);
+end
 local opt_keepalives = module:get_option_boolean("shard_tcp_keepalives", module:get_option_boolean("tcp_keepalives", true));
 
 local conns = {};
@@ -201,6 +204,20 @@ local function handle_send(event)
         conns[shard] = conn;
         queue[shard] = {};
     end
+
+    if stanza.attr.via then
+        local via = ut.string.explode(';', stanza.attr.via);
+        module:log("debug", "via:%s", ut.table.tostring(via));
+        if ut.table.contains(via, shard_name) then
+            module:log("error", "loop detected, stanza[%s]", stanza);
+            return;
+        end
+        table.insert(via, shard_name);
+        stanza.attr.via = ut.table.implode(';', via);
+    else
+        stanza.attr.via = shard_name;
+    end
+    module:log("debug", "new via:%s", stanza.attr.via);
 
     local session = sessions[conn]
     if session == nil then
