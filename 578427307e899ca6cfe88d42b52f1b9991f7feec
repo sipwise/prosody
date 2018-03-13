@@ -1,0 +1,7 @@
+Verified+1: Jenkins Jenkins
+Code-Review+2: Richard Fuchs <rfuchs@sipwise.com>
+Submitted-by: Andreas Granig <agranig@sipwise.com>
+Submitted-at: Tue, 13 Mar 2018 16:13:28 +0100
+Reviewed-on: http://gerrit.mgm.sipwise.com/19685
+Project: prosody
+Branch: refs/heads/master
