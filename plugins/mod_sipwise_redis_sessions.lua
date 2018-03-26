@@ -12,7 +12,8 @@ local array = require "util.array";
 local redis = require 'redis';
 local redis_config = {
 	port = 6739, host = "127.0.0.1",
-	server_id = "0", redis_db = "2"
+	server_id = "0", redis_db = "2",
+	clean_local_sessions = true,
 };
 local redis_client;
 
@@ -48,22 +49,45 @@ local function resource_bind(event)
 	redis_client:sadd(bare_jid, redis_config.server_id..":"..resource);
 end
 
-local function resource_unbind(event)
-	local session, _ = event.session, event.error;
-	local node, domain, resource = jid.split(session.full_jid);
-	local full_jid, bare_jid = session.full_jid, node.."@"..domain;
+local function remove_resource(full_jid)
+	local node, domain, resource = jid.split(full_jid);
+	local bare_jid = node.."@"..domain;
 
-	module:log("debug", "resource-unbind from %s", session.host);
-	module:log("debug", "remove [%s]=%s", full_jid, redis_config.server_id);
 	if not test_connection() then client_connect() end
 	redis_client:del(full_jid);
-	module:log("debug", "remove [%s]=>%s:%s", bare_jid, redis_config.server_id, resource);
+	module:log("debug", "remove [%s]=%s", full_jid, redis_config.server_id);
 	redis_client:srem(bare_jid, redis_config.server_id..":"..resource);
+	module:log("debug", "remove [%s]=>%s:%s", bare_jid,
+		redis_config.server_id, resource);
+end
+
+local function resource_unbind(event)
+	local session, _ = event.session, event.error;
+
+	module:log("debug", "resource-unbind from %s", session.host);
+	remove_resource(session.full_jid);
 end
 
 local function split_key(key)
 	local t = ut.string.explode(':', key);
 	return t[1], t[2];
+end
+
+local function clean_local_sessions(host)
+	if not test_connection() then client_connect() end
+	local l = redis_client:keys('*@'..host);
+	for _, bare_jid in ipairs(l) do
+		local resources = redis_client:smembers(bare_jid);
+		module:log("debug", "clean previous sessions for %s on %s",
+			bare_jid, redis_config.server_id);
+		for _, resource in ipairs(resources) do
+			local server, old_resource = split_key(resource);
+			if server == redis_config.server_id then
+				module:log("debug", "remove old resource %s", old_resource);
+				remove_resource(bare_jid..'/'..old_resource);
+			end
+		end
+	end
 end
 
 function redis_sessions.get_hosts(j)
@@ -85,12 +109,32 @@ function redis_sessions.get_hosts(j)
 	return res;
 end
 
+function redis_sessions.clean_host(j, server_id)
+	local bare_jid = jid.bare(j);
+	module:log("debug", "clean jid %s from %s", bare_jid, server_id);
+	if not test_connection() then client_connect() end
+	local l = redis_client:smembers(bare_jid);
+	for _,v in pairs(l) do
+		local h, _ = split_key(v);
+		if h == server_id then
+			redis_client:srem(bare_jid, v);
+			redis_client:del(v);
+			module:log("debug", "removed %s from %s", v, bare_jid);
+		end
+	end
+end
+
 function module.load()
 	redis_config = module:get_option("redis_sessions_auth", redis_config);
 end
 
 function module.add_host(module)
-	module:hook("resource-bind", resource_bind, 200);
-	module:hook("resource-unbind", resource_unbind, 200);
-	module:log("debug", "hooked at %s", module:get_host());
+	local host = module:get_host();
+
+	if module:get_host_type() ~= "component" then
+		module:hook("resource-bind", resource_bind, 200);
+		module:hook("resource-unbind", resource_unbind, 200);
+		clean_local_sessions(host);
+		module:log("debug", "hooked at %s", host);
+	end
 end

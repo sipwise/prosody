@@ -199,12 +199,12 @@ local function handle_send(event)
         conn, err = connect(shard);
         if not conn then
             module:log("error", "couldn't connect to "..shard..": "..err);
+            module:fire_event("shard/error", {shard = shard, stanza = stanza});
             return;
         end
         conns[shard] = conn;
         queue[shard] = {};
     end
-
     if stanza.attr.via then
         local via = ut.string.explode(';', stanza.attr.via);
         module:log("debug", "via:%s", ut.table.tostring(via));

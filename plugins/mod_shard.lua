@@ -41,14 +41,36 @@ local function get_local_rooms(host)
     return rooms;
 end
 
+local function is_persistent_room(jid)
+    local node, host, _ = jid_split(jid);
+    local bare = node..'@'..host;
+
+    if hosts[host] and hosts[host].muc.rooms[bare] then
+        return hosts[host].muc.rooms[bare]._data.persistent;
+    end
+    return false;
+end
+
+local function check_redis_info(room)
+    local rhost = redis_mucs.get_room_host(room);
+
+    if rhost ~= shard_name then
+        module:log("info", "clean wrong shard info for room[%s]", room);
+        redis_mucs.clean_room_host(room, rhost);
+        redis_mucs.set_room_host(room, shard_name);
+    end
+end
+
 local function handle_room_event(event)
     local to = event.stanza.attr.to;
     local node, host, _ = jid_split(to);
-    local rhost;
+    local rhost, bare;
 
     if node then
-        if hosts[host].muc.rooms[node] then
-            module:log("debug", "room[%s] is hosted here. Nothing to do", node);
+        bare = node..'@'..host;
+        if not is_persistent_room(bare) and hosts[host].muc.rooms[bare] then
+            module:log("debug", "room[%s] is hosted here. Nothing to do", bare);
+            check_redis_info(bare);
             return nil;
         end
         module:log("debug", "looking up target room shard for %s", to);
@@ -65,7 +87,14 @@ local function handle_room_event(event)
     end
 
     if not rhost then
-        module:log("debug", "room not found. Nothing to do");
+        assert(bare);
+        if is_persistent_room(bare) then
+            module:log("info",
+                "restore missing info for persistent room[%s]", bare);
+            redis_mucs.set_room_host(bare, shard_name);
+        else
+            module:log("debug", "room not found. Nothing to do");
+        end
         return nil;
     end
 
@@ -128,6 +157,21 @@ local function handle_event (event)
     return stop_process_local;
 end
 
+local function handle_shard_error(event)
+    local server_id = event.shard
+    local stanza = event.stanza
+    local jid = stanza.attr.to;
+    local _, host, _ = jid_split(jid);
+
+    if hosts[host].muc then
+        module:log("debug",
+            "to MUC %s detected, clean conference %s", host, jid);
+        redis_mucs.clean_room_host(jid, server_id)
+    else
+        redis_sessions.clean_host(jid, server_id)
+    end
+end
+
 module:hook("iq/bare", handle_event, 1000);
 module:hook("iq/full", handle_event, 1000);
 module:hook("iq/host", handle_event, 1000);
@@ -137,4 +181,5 @@ module:hook("message/host", handle_event, 1000);
 module:hook("presence/bare", handle_event, 1000);
 module:hook("presence/full", handle_event, 1000);
 module:hook("presence/host", handle_event, 1000);
+module:hook_global("shard/error", handle_shard_error);
 module:log("debug", "hooked at %s", module:get_host());
