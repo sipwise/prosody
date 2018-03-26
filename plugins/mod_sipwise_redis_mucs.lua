@@ -33,35 +33,16 @@ end
 
 local function muc_created(event)
 	local room = event.room;
-	local node, host, _ = jid.split(room.jid)
 
+	redis_mucs.set_room_host(room.jid, redis_config.server_id);
 	module:log("debug", "muc-room-created %s", room.jid);
-
-	if not test_connection() then client_connect() end
-	-- TODO: check that there is no other "room.jid" value?
-	if redis_client:set(room.jid, redis_config.server_id) then
-		module:log("debug", "save [%s]=%s", room.jid, redis_config.server_id);
-	end
-	if redis_client:sadd(host, redis_config.server_id..":"..node) > 0 then
-		module:log("debug", "append [%s]=>%s:%s", host,
-			redis_config.server_id, node);
-	end
 end
 
 local function muc_destroyed(event)
 	local room = event.room;
-	local node, host, _ = jid.split(room.jid)
 
+	redis_mucs.clean_room_host(room.jid, redis_config.server_id);
 	module:log("debug", "muc-room-destroyed %s", room.jid);
-
-	if not test_connection() then client_connect() end
-	if redis_client:del(room.jid) > 0 then
-		module:log("debug", "remove [%s]=%s", room.jid, redis_config.server_id);
-	end
-	if redis_client:srem(host, redis_config.server_id..":"..node) > 0 then
-		module:log("debug", "remove [%s]=>%s:%s", host,
-			redis_config.server_id, node);
-	end
 end
 
 local function split_key(key)
@@ -85,13 +66,41 @@ function redis_mucs.get_rooms(host)
 	return res;
 end
 
+function redis_mucs.set_room_host(room_jid, server_id)
+	local node, host, _ = jid.split(room_jid);
+	local bare_jid = node.."@"..host;
+
+	if not test_connection() then client_connect() end
+	-- TODO: check that there is no other "bare_jid" value?
+	if redis_client:set(bare_jid, server_id) then
+		module:log("debug", "save [%s]=%s", bare_jid, server_id);
+	end
+	if redis_client:sadd(host, server_id..":"..node) > 0 then
+		module:log("debug", "append [%s]=>%s:%s", host,
+			server_id, node);
+	end
+end
+
 function redis_mucs.get_room_host(room_jid)
-	local node, domain = jid.split(room_jid);
+	local node, domain, _ = jid.split(room_jid);
 	local bare_jid = node.."@"..domain;
 
 	module:log("debug", "search room:%s host", bare_jid);
 	if not test_connection() then client_connect() end
 	return redis_client:get(bare_jid);
+end
+
+function redis_mucs.clean_room_host(room_jid, server_id)
+	local node, host, _ = jid.split(room_jid);
+	local bare_jid = node.."@"..host;
+
+	if not test_connection() then client_connect() end
+	if redis_client:del(bare_jid) > 0 then
+		module:log("debug", "remove [%s]=%s", bare_jid, server_id);
+	end
+	if redis_client:srem(host, server_id..":"..node) > 0 then
+		module:log("debug", "remove [%s]=>%s:%s", host, server_id, node);
+	end
 end
 
 function module.load()

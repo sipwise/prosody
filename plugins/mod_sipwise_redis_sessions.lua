@@ -85,6 +85,21 @@ function redis_sessions.get_hosts(j)
 	return res;
 end
 
+function redis_sessions.clean_host(j, server_id)
+	local bare_jid = jid.bare(j);
+	module:log("debug", "clean jid %s from %s", bare_jid, server_id);
+	if not test_connection() then client_connect() end
+	local l = redis_client:smembers(bare_jid);
+	for _,v in pairs(l) do
+		local h, _ = split_key(v);
+		if h == server_id then
+			redis_client:srem(bare_jid, v);
+			redis_client:del(v);
+			module:log("debug", "removed %s from %s", v, bare_jid);
+		end
+	end
+end
+
 function module.load()
 	redis_config = module:get_option("redis_sessions_auth", redis_config);
 end
