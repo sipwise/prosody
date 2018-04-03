@@ -1,3 +1,19 @@
+ngcp-prosody-modules (6.2.1.0+0~mr6.2.1.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [b84c7b3] [util/table] fix implode function
+  * [dd76b25] TT#33379 Merge https://github.com/sipwise/prosody/pull/2
+
+  [ Andreas Granig ]
+  * [5784273] TT#27653 Strip trailing trash from uuid
+
+  [ Richard Fuchs ]
+  * [bffc901] TT#34705 merge https://github.com/sipwise/prosody/pull/3
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 03 Apr 2018 22:32:03 +0200
+
 ngcp-prosody-modules (6.2.0.0+0~mr6.2.0.0) unstable; urgency=medium
 
   [ Sergii Kipot ]
