@@ -1,0 +1,30 @@
+--- a/plugins/mod_mam/sipwise_archive.lib.lua
++++ b/plugins/mod_mam/sipwise_archive.lib.lua
+@@ -36,7 +36,7 @@
+ 
+ local select_query_base=[[
+ SELECT UuidFromBin(`key`),`stanza`,`epoch`,`with` FROM `sipwise_mam`
+-WHERE `username` = ?
++WHERE (`username` = ? or `with` = ?)
+ ]]
+ 
+ -- Reconnect to DB if necessary
+@@ -100,7 +100,7 @@
+ 	local qstart, qend, qwith = -math.huge, math.huge;
+ 	local qlimit, qid;
+ 	local db_query = select_query_base;
+-	local _params = { username..'@'..host, };
++	local _params = { username..'@'..host, username..'@'..host, };
+ 	local i, values = 0;
+ 
+ 	if query then
+@@ -118,7 +118,8 @@
+ 	end
+ 
+ 	if qwith then
+-		db_query = db_query.." AND `with` = ?";
++		db_query = db_query.." AND (`username` = ? OR `with` = ?)";
++		table.insert(_params, qwith);
+ 		table.insert(_params, qwith);
+ 	end
+ 	if qid then
