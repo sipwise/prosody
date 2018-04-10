@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "baa041b7_dd0b9c7c",
+        "filename": "debian/ngcp-prosody-modules.postinst",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2018-04-10T21:10:10Z",
+      "side": 1,
+      "message": "Or we could just remove the whole file, as the policy-rc.d will always refuse the restart. I was just trying to cover the case where the user might not have it but, we do not care in general so...",
+      "parentUuid": "baa041b7_7dc7f045",
+      "revId": "f02a1283c88b71c1bc7a5f50f4c132cfae991ce8",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "baa041b7_5dc42c3f",
         "filename": "debian/ngcp-prosody-modules.postinst",
         "patchSetId": 1
