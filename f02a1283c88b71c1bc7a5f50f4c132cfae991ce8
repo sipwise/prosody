@@ -1,0 +1,44 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "baa041b7_7dc7f045",
+        "filename": "debian/ngcp-prosody-modules.postinst",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-04-10T21:00:16Z",
+      "side": 1,
+      "message": "there might the chicken-eggs issue during the installation where /etc/ngcp-service/nsservice.yml is not yet created...",
+      "revId": "f02a1283c88b71c1bc7a5f50f4c132cfae991ce8",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "baa041b7_5dc42c3f",
+        "filename": "debian/ngcp-prosody-modules.postinst",
+        "patchSetId": 1
+      },
+      "lineNbr": 5,
+      "author": {
+        "id": 1000001
+      },
+      "writtenOn": "2018-04-10T21:00:16Z",
+      "side": 1,
+      "message": "can you please explain this?",
+      "range": {
+        "startLine": 5,
+        "startChar": 8,
+        "endLine": 5,
+        "endChar": 67
+      },
+      "revId": "f02a1283c88b71c1bc7a5f50f4c132cfae991ce8",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
+    }
+  ]
+}
