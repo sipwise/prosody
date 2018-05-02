@@ -1,3 +1,15 @@
+ngcp-prosody-modules (6.2.2.0+0~mr6.2.2.0) unstable; urgency=medium
+
+  [ Andreas Granig ]
+  * [50ea3db] TT#35053 Fix MAM by retrieving also inbound msg
+
+  [ Guillem Jover ]
+  * [157c5c5] TT#26264 Remove maintainer script directly calling init scripts
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 02 May 2018 12:58:44 +0200
+
 ngcp-prosody-modules (6.2.1.0+0~mr6.2.1.0) unstable; urgency=medium
 
   [ Victor Seva ]
