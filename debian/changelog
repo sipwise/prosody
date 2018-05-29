@@ -1,3 +1,16 @@
+ngcp-prosody-modules (6.4.0.0+0~mr6.4.0.0) unstable; urgency=medium
+
+  [ Andreas Granig ]
+  * [a0418df] TT#35053 Fix MAM by retrieving also inbound msg
+  * [fde6324] TT#35604 Implement silent flag for push
+
+  [ Guillem Jover ]
+  * [c17d295] TT#26264 Remove maintainer script directly calling init scripts
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 29 May 2018 10:09:00 +0200
+
 ngcp-prosody-modules (6.3.0.0+0~mr6.3.0.0) unstable; urgency=medium
 
   [ Victor Seva ]
