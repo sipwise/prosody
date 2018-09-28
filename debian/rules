@@ -15,6 +15,17 @@ override_dh_auto_configure:
 override_dh_install:
 	dh_install
 	find debian/ngcp-prosody-modules/ -name README.\* -delete
+	# conflicts with prosody >=0.10.2-1 in Debian/buster
+	if lsb_release -rs | grep -q '^9' ; then \
+		echo "Keeping all modules for Debian stretch"; \
+	else \
+		echo "Removing conflicting modules (shipped by prosody in Debian)"; \
+		find debian/ngcp-prosody-modules/ -name fallback_archive.lib.lua -delete; \
+		find debian/ngcp-prosody-modules/ -name mamprefs.lib.lua -delete; \
+		find debian/ngcp-prosody-modules/ -name mamprefsxml.lib.lua -delete; \
+		find debian/ngcp-prosody-modules/ -name mod_mam.lua -delete; \
+		find debian/ngcp-prosody-modules/ -name mod_websocket.lua -delete; \
+	fi
 
 override_dh_auto_clean:
 	rm -f debian/README_mod_*.*
