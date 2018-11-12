@@ -1,3 +1,12 @@
+ngcp-prosody-modules (7.1.0.0+0~mr7.1.0.0) unstable; urgency=medium
+
+  [ Michael Prokop ]
+  * [039086e] TT#44917 Ship certain modules only on Debian/stretch
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 12 Nov 2018 22:39:48 +0100
+
 ngcp-prosody-modules (7.0.0.0+0~mr7.0.0.0) unstable; urgency=medium
 
   * New release.
