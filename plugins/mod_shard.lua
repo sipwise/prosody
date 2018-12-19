@@ -24,13 +24,20 @@ end
 
 module:log("info", "%s added to shard %s", module.host, shard_name);
 
-local function build_query_result(rooms, stanza)
-    local xmlns = 'http://jabber.org/protocol/disco#items';
-    local s = stanza:query(xmlns);
+local function get_disco_info(rooms, stanza)
+    local count = 0; for room in rooms do count = count + 1; end
+    return st.reply(stanza):query("http://jabber.org/protocol/disco#info")
+        :tag("identity", {category="conference", type="text", name="Chat Rooms"}):up()
+        :tag("feature", {var="http://jabber.org/protocol/muc"}):up()
+    ;
+end
+
+local function get_disco_items(rooms, stanza)
+    local reply = st.reply(stanza):query("http://jabber.org/protocol/disco#items");
     for room in rooms do
-        s:tag("item", {jid=room}):up();
+        reply:tag("item", {jid = room, name = room:match("/(.*)")}):up();
     end
-    return stanza;
+    return reply;
 end
 
 local function get_local_rooms(host)
@@ -65,6 +72,8 @@ local function handle_room_event(event)
     local to = event.stanza.attr.to;
     local node, host, _ = jid_split(to);
     local rhost, bare;
+    local type = event.stanza.attr.type;
+    local xmlns = event.stanza.tags[1] and event.stanza.tags[1].attr.xmlns;
 
     if node then
         bare = node..'@'..host;
@@ -80,7 +89,16 @@ local function handle_room_event(event)
         local rooms = set.union(get_local_rooms(host),
             redis_mucs.get_rooms(host));
         module:log("debug", "rooms: %s", tostring(rooms));
-        local stanza = build_query_result(rooms, st.reply(event.stanza));
+        local stanza;
+        if xmlns == "http://jabber.org/protocol/disco#info" and type == "get" and not event.stanza.tags[1].attr.node then
+            stanza = get_disco_info(rooms, st.reply(event.stanza));
+        elseif xmlns == "http://jabber.org/protocol/disco#items" and type == "get" and not event.stanza.tags[1].attr.node then
+            stanza = get_disco_items(rooms, st.reply(event.stanza));
+        else
+            stanza = st.error_reply(event.stanza, "cancel", "bad-request")
+        end
+        stanza.attr.to = stanza.attr.from;
+        stanza.attr.from = to;
         module:log("debug", "reply[%s]", tostring(stanza));
         event.origin.send(stanza);
         return true;
