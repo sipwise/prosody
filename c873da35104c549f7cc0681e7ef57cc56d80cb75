@@ -22,6 +22,30 @@
       "revId": "c873da35104c549f7cc0681e7ef57cc56d80cb75",
       "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "fa1b9901_46622fda",
+        "filename": "debian/copyright",
+        "patchSetId": 1
+      },
+      "lineNbr": 10,
+      "author": {
+        "id": 1000016
+      },
+      "writtenOn": "2019-07-03T20:34:27Z",
+      "side": 0,
+      "message": "Yes, this is the license from the file being referenced in the upstream repo. It has multiple names, MIT, X11, Expat, etc.",
+      "parentUuid": "fa1b9901_ab799631",
+      "range": {
+        "startLine": 10,
+        "startChar": 9,
+        "endLine": 10,
+        "endChar": 16
+      },
+      "revId": "c873da35104c549f7cc0681e7ef57cc56d80cb75",
+      "serverId": "85315e57-5f03-49c3-83f8-201ae2313a75",
+      "unresolved": false
     }
   ]
 }
