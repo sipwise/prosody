@@ -1,3 +1,19 @@
+ngcp-prosody-modules (7.5.1.0+0~mr7.5.1.0) unstable; urgency=medium
+
+  [ Alexander Lutay ]
+  * [b898a6c] TT#60950 Switch prosody docker to buster
+
+  [ Guillem Jover ]
+  * [9cbd440] TT#61954 Add missing COPYING file from upstream
+  * [c873da3] TT#61954 Update copyright Format URL to use https
+  * [22a5ddd] TT#61954 Rework debian/copyright file
+  * [4211f6d] TT#61954 Update copyright years
+  * [3ab509e] TT#61954 Set debhelper compat level in Build-Depends instead of debian/compat
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 05 Aug 2019 20:59:36 +0200
+
 ngcp-prosody-modules (7.5.0.0+0~mr7.5.0.0) unstable; urgency=medium
 
   * New release.
