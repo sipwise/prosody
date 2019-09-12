@@ -18,7 +18,7 @@ Depends:
  lua-rex-pcre,
  lua-sec,
  ngcp-system-tools-ce | ngcp-system-tools,
- prosody (>= 0.9.8~),
+ prosody (<< 0.10~),
  ${misc:Depends},
 Description: ngcp modules for the prosody Jabber/XMPP server
  This package provides modules for the Prosody Jabber/XMPP server
