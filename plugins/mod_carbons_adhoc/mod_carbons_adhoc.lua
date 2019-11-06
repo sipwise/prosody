@@ -15,8 +15,6 @@ local xmlns_carbons_v0 = "urn:xmpp:carbons:0";
 local bare_sessions = bare_sessions;
 
 local function adhoc_status(self, data, state)
-	local result;
-
 	local bare_jid = jid_bare(data.from);
 	local user_sessions = bare_sessions[bare_jid];
 
