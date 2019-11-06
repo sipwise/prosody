@@ -1,9 +1,2 @@
 mod_auth_sql.path
-0001-mod_mam_disco.path
-0002-TT-8297-mam-implement-archive-to-DB.patch
-0003-TT-9303-mod_mam-sipwise_archive.lib-fix-crash-at-fin.patch
-0004-TT-9311-mod_mam-sipwise_archive.lib-full-username.patch
-0005-TT-9317-mod_mam-don-t-store-bodyless-chat-messages.patch
-0006-TT-9314-mod_mam-sipwise_archive.lib-support-emojis.patch
-0007-TT-27653-mod_mam-sipwise_archive.lib-fix-uuid-trailing-garbage.patch
 0009-TT-35604-mod_sipwise_pushd.lib-add-silent-push
