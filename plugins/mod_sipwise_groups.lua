@@ -141,7 +141,8 @@ local displayname_preference_id;
 
 
 -- "roster-load" callback
-local function inject_roster_contacts(username, host, roster)
+local function inject_roster_contacts(event)
+	local username, host, roster = event.username, event.host, event.roster;
 	module:log("debug", "Injecting group members to roster");
 	local bare_jid = username.."@"..host;
 	local account_id, groups, display_names;
