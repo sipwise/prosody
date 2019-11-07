@@ -13,7 +13,7 @@ local configmanager = require "core.configmanager";
 local ut = require "util.table";
 
 local connection;
-local params = module:get_option("auth_sql", module:get_option("auth_sql"));
+local params = module:get_option("auth_sql", module:get_option("sql"));
 local prosody = _G.prosody;
 
 local function test_connection()
