@@ -4,9 +4,9 @@
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
 --
-local mod_sql = module:require("sql");
-local params = module:get_option("sql", {});
-local engine = mod_sql:create_engine(params);
+local sql = require "util.sql";
+local default_params = { driver = "MySQL" };
+local engine;
 
 local sipwise_offline = module:shared("sipwise_offline");
 
@@ -41,7 +41,6 @@ local function reconect_check()
 	if not engine.conn:ping() then
 		engine.conn = nil;
 		engine:connect();
-		engine:execute("SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';");
 	end
 end
 
@@ -150,7 +149,23 @@ local function broadcast_offline(event)
 	return true;
 end
 
+local function normalize_params(params)
+	assert(params.driver and params.database,
+		"Configuration error: Both the SQL driver and the database need to be specified");
+	return params;
+end
+
 function module.load()
+	if prosody.prosodyctl then return; end
+	local engines = module:shared("/*/sql/connections");
+	local params = normalize_params(module:get_option("sql", default_params));
+	engine = engines[sql.db2uri(params)];
+	if not engine then
+		module:log("debug", "Creating new engine");
+		engine = sql:create_engine(params);
+		engines[sql.db2uri(params)] = engine;
+	end
+
 	module:hook("message/offline/handle", handle_offline, 1);
 	module:hook("message/offline/broadcast", broadcast_offline, 1);
 end

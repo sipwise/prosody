@@ -101,10 +101,9 @@ local function implode(delimiter, list, quoter)
     return string
 end
 
-local mod_sql = module:require("sql");
-local params = module:get_option("auth_sql", module:get_option("auth_sql"));
-local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+local sql = require "util.sql";
+local default_params = module:get_option("sql");
+local engine;
 
 -- Reconnect to DB if necessary
 local function reconect_check()
@@ -121,7 +120,7 @@ local function lookup_buddy_id()
 	reconect_check();
 	local res = engine:select(lookupt_preference_id_query,
 		'shared_buddylist_visibility');
-	for row in res do
+	for row in res do -- luacheck: ignore 512
 		return row[1]
 	end
 	module:log("error", "no 'shared_buddylist_visiblility' preference found!");
@@ -133,7 +132,7 @@ local function lookup_displayname_id()
 	reconect_check();
 	local res = engine:select(lookupt_preference_id_query,
 		'display_name');
-	for row in res do
+	for row in res do -- luacheck: ignore 512
 		return row[1]
 	end
 	module:log("error", "no 'display_name' preference found!");
@@ -151,7 +150,7 @@ local function inject_roster_contacts(username, host, roster)
 	local function lookup_account_id()
 		--module:log("debug", "lookup user '%s@%s'", username, host);
 		reconect_check();
-		for row in engine:select(account_id_query, username, host) do
+		for row in engine:select(account_id_query, username, host) do -- luacheck: ignore 512
 			module:log("debug", "user '%s@%s' belongs to %d",
 				username, host, row[1]);
 			return row[1];
@@ -262,7 +261,23 @@ local function inject_roster_contacts(username, host, roster)
 	end
 end
 
+local function normalize_params(params)
+	assert(params.driver and params.database,
+		"Configuration error: Both the SQL driver and the database need to be specified");
+	return params;
+end
+
 function module.load()
+	if prosody.prosodyctl then return; end
+	local engines = module:shared("/*/sql/connections");
+	local params = normalize_params(module:get_option("auth_sql", default_params));
+	engine = engines[sql.db2uri(params)];
+	if not engine then
+		module:log("debug", "Creating new engine");
+		engine = sql:create_engine(params);
+		engines[sql.db2uri(params)] = engine;
+	end
+
 	module:hook("roster-load", inject_roster_contacts);
-	module:log("info", "Groups loaded successfully");
+	module:log("debug", "Groups loaded successfully");
 end
