@@ -9,7 +9,7 @@ module:depends("sipwise_vcard_cusax");
 module:depends("sipwise_pushd_blocking");
 
 local datamanager = require "util.datamanager";
-local mod_sql = module:require("sql");
+local sql = require "util.sql";
 local format = string.format;
 local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
@@ -36,13 +36,6 @@ local pushd_config = {
 	msg_sound  = 'incoming_message.caf',
 	muc_config = muc_config
 };
-local sql_config = {
-	driver = "MySQL",
-	database = "provisioning",
-	username = "prosody",
-	password = "PW_PROSODY",
-	host = "localhost"
-};
 
 local push_usr_query = [[
 SELECT vp.attribute, vup.value FROM provisioning.voip_preferences vp
@@ -61,6 +54,7 @@ SELECT vp.attribute, vup.value FROM provisioning.voip_preferences vp
 WHERE vp.attribute = 'mobile_push_enable'
   AND vd.domain = ?;
 ]];
+local default_params = { driver = "MySQL" };
 local engine;
 
 -- luacheck: ignore request
@@ -522,12 +516,20 @@ module:hook("message/bare", handle_msg, 20);
 module:hook("message/offline/handle", handle_offline, 20);
 
 function module.load()
+	if prosody.prosodyctl then return; end
+	local engines = module:shared("/*/sql/connections");
+	local params = normalize_params(module:get_option("sql", default_params));
+	engine = engines[sql.db2uri(params)];
+	if not engine then
+		module:log("debug", "Creating new engine");
+		engine = sql:create_engine(params);
+		engines[sql.db2uri(params)] = engine;
+	end
+
 	pushd_config = module:get_option("pushd_config", pushd_config);
 	if not pushd_config.muc_config then
 		pushd_config.muc_config = muc_config
 	end
-	sql_config   = module:get_option("auth_sql", sql_config);
-	engine = mod_sql:create_engine(sql_config);
-	engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+
 	module:log("info", "load OK");
 end

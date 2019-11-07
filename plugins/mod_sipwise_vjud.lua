@@ -7,7 +7,7 @@
 module:depends("disco");
 
 local ut_jid = require "util.jid";
-local mod_sql = module:require("sql");
+local sql = require "util.sql";
 local st = require "util.stanza";
 local template = require "util.template";
 local rex = require "rex_pcre";
@@ -134,15 +134,13 @@ local params = module:get_option("auth_sql", {
 	password = "PW_PROSODY",
 	host = "localhost"
 });
-local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+local engine;
 
 -- Reconnect to DB if necessary
 local function reconect_check()
 	if not engine.conn:ping() then
 		engine.conn = nil;
 		engine:connect();
-		engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 	end
 end
 
@@ -316,3 +314,17 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 		return origin.send(reply);
 	end
 end);
+
+function module.load()
+	if prosody.prosodyctl then return; end
+	local engines = module:shared("/*/sql/connections");
+	local params = normalize_params(module:get_option("sql", default_params));
+	engine = engines[sql.db2uri(params)];
+	if not engine then
+		module:log("debug", "Creating new engine");
+		engine = sql:create_engine(params);
+		engines[sql.db2uri(params)] = engine;
+	end
+
+	module:log("info", "load OK");
+end
