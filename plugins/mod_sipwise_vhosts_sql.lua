@@ -115,6 +115,9 @@ local function load_vhosts_from_db()
 			if ut.table.contains(host_modules, "sipwise_pushd") then
 				ut.table.add(conference_modules, "sipwise_pushd");
 			end
+			if ut.table.contains(host_modules, "mam") then
+				ut.table.add(conference_modules, "muc_mam");
+			end
 			module:log("debug", "conference_modules[%s]: %s",
 				"conference."..row.domain, ut.table.tostring(host_modules));
 			configmanager.set("conference."..row.domain, "modules_enabled",

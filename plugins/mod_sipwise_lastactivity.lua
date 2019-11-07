@@ -23,13 +23,28 @@ module:hook("pre-presence/bare", function(event)
 	local stanza = event.stanza;
 	if not(stanza.attr.to) then
 		local t = os.time();
-		local s = stanza:child_with_name("status");
-		s = s and #s.tags == 0 and s[1] or "";
+		local s = stanza:get_child_text("status");
 		map[event.origin.username] = {s = s, t = t};
 		module:log("debug", string.format("change of presence:%s from:%s",
 			tostring(s), tostring(event.origin.username)));
 	end
 end, 10);
+
+module:hook("iq-get/bare/jabber:iq:last:query", function(event)
+	local origin, stanza = event.origin, event.stanza;
+	local username = jid_split(stanza.attr.to) or origin.username;
+	if not stanza.attr.to or is_contact_subscribed(username, module.host, jid_bare(stanza.attr.from)) then
+		local seconds, text = nil, "";
+		if not sessions[origin.conn] and map[username] then
+			seconds = tostring(os.difftime(os.time(), map[username].t));
+			text = map[username].s;
+		end
+		origin.send(st.reply(stanza):tag('query', {xmlns='jabber:iq:last', seconds=seconds}):text(text));
+	else
+		origin.send(st.error_reply(stanza, 'auth', 'forbidden'));
+	end
+	return true;
+end);
 
 local function msg_handler(event)
 	local origin, stanza = event.origin, event.stanza;
@@ -42,21 +57,3 @@ end
 -- lastactivity: any message sent
 module:hook("pre-message/bare", msg_handler);
 module:hook("pre-message/full", msg_handler);
-
-module:hook("iq/bare/jabber:iq:last:query", function(event)
-	local origin, stanza = event.origin, event.stanza;
-	if stanza.attr.type == "get" then
-		local username = jid_split(stanza.attr.to) or origin.username;
-		if not stanza.attr.to or is_contact_subscribed(username, module.host, jid_bare(stanza.attr.from)) then
-			local seconds, text = nil, "";
-			if not sessions[origin.conn] and map[username] then
-				seconds = tostring(os.difftime(os.time(), map[username].t));
-				text = map[username].s;
-			end
-			origin.send(st.reply(stanza):tag('query', {xmlns='jabber:iq:last', seconds=seconds}):text(text));
-		else
-			origin.send(st.error_reply(stanza, 'auth', 'forbidden'));
-		end
-		return true;
-	end
-end);
