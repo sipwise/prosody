@@ -7,7 +7,7 @@
 module:depends("disco");
 
 local ut_jid = require "util.jid";
-local mod_sql = module:require("sql");
+local sql = require "util.sql";
 local st = require "util.stanza";
 local template = require "util.template";
 local rex = require "rex_pcre";
@@ -97,7 +97,9 @@ SELECT vrr.match_pattern, vrr.replace_pattern FROM provisioning.voip_preferences
   LEFT JOIN provisioning.voip_subscribers vs ON vs.id = vup.subscriber_id
   LEFT JOIN provisioning.voip_domains vd ON vd.id = vs.domain_id
   LEFT JOIN provisioning.voip_rewrite_rule_sets vrrs ON vrrs.callee_in_dpid = vup.value
-  LEFT JOIN provisioning.voip_rewrite_rules vrr ON vrr.set_id = vrrs.id AND vrr.direction = 'in' AND vrr.field = 'callee'
+  LEFT JOIN provisioning.voip_rewrite_rules vrr ON vrr.set_id = vrrs.id
+   AND vrr.direction = 'in'
+   AND vrr.field = 'callee'
 WHERE vp.attribute = 'rewrite_callee_in_dpid' AND vs.username = ? AND vd.domain = ?
   ORDER BY vrr.priority ASC;
 ]];
@@ -107,7 +109,8 @@ SELECT vrr.match_pattern, vrr.replace_pattern FROM provisioning.voip_preferences
   LEFT JOIN provisioning.voip_dom_preferences vdp ON vdp.attribute_id = vp.id
   LEFT JOIN provisioning.voip_domains vd ON vd.id = vdp.domain_id
   LEFT JOIN provisioning.voip_rewrite_rule_sets vrrs ON vrrs.callee_in_dpid = vdp.value
-  LEFT JOIN provisioning.voip_rewrite_rules vrr ON vrr.set_id = vrrs.id AND vrr.direction = 'in' AND vrr.field = 'callee'
+  LEFT JOIN provisioning.voip_rewrite_rules vrr ON vrr.set_id = vrrs.id
+   AND vrr.direction = 'in' AND vrr.field = 'callee'
 WHERE vp.attribute = 'rewrite_callee_in_dpid'  AND vd.domain = ?
   ORDER BY vrr.priority ASC;
 ]];
@@ -127,22 +130,14 @@ SELECT username,domain FROM kamailio.dbaliases
 WHERE alias_username=?;
 ]];
 
-local params = module:get_option("auth_sql", {
-	driver = "MySQL",
-	database = "provisioning",
-	username = "prosody",
-	password = "PW_PROSODY",
-	host = "localhost"
-});
-local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+local default_params = { driver = "MySQL" };
+local engine;
 
 -- Reconnect to DB if necessary
 local function reconect_check()
 	if not engine.conn:ping() then
 		engine.conn = nil;
 		engine:connect();
-		engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 	end
 end
 
@@ -316,3 +311,23 @@ module:hook("iq/host/jabber:iq:search:query", function(event)
 		return origin.send(reply);
 	end
 end);
+
+local function normalize_params(params)
+	assert(params.driver and params.database,
+		"Configuration error: Both the SQL driver and the database need to be specified");
+	return params;
+end
+
+function module.load()
+	if prosody.prosodyctl then return; end
+	local engines = module:shared("/*/sql/connections");
+	local params = normalize_params(module:get_option("sql", default_params));
+	engine = engines[sql.db2uri(params)];
+	if not engine then
+		module:log("debug", "Creating new engine");
+		engine = sql:create_engine(params);
+		engines[sql.db2uri(params)] = engine;
+	end
+
+	module:log("debug", "load OK");
+end

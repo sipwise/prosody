@@ -43,16 +43,9 @@ WHERE ps.username = ? AND pd.domain = ? ORDER BY pa.is_primary DESC;
 ]];
 
 local um_user_exists = require "core.usermanager".user_exists;
-local mod_sql = module:require("sql");
-local params = module:get_option("auth_sql", {
-	driver = "MySQL",
-	database = "provisioning",
-	username = "prosody",
-	password = "PW_PROSODY",
-	host = "localhost"
-});
-local engine = mod_sql:create_engine(params);
-engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
+local sql = require "util.sql";
+local default_params = { driver = "MySQL" };
+local engine;
 
 module:add_feature("vcard-temp");
 
@@ -60,7 +53,6 @@ local function reconect_check()
 	if not engine.conn:ping() then
 		engine.conn = nil;
 		engine:connect();
-		engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
 	end
 end
 
@@ -181,3 +173,21 @@ end
 
 module:hook("iq/bare/vcard-temp:vCard", handle_vcard);
 module:hook("iq/host/vcard-temp:vCard", handle_vcard);
+
+local function normalize_params(params)
+	assert(params.driver and params.database,
+		"Configuration error: Both the SQL driver and the database need to be specified");
+	return params;
+end
+
+function module.load()
+	if prosody.prosodyctl then return; end
+	local engines = module:shared("/*/sql/connections");
+	local params = normalize_params(module:get_option("sql", default_params));
+	engine = engines[sql.db2uri(params)];
+	if not engine then
+		module:log("debug", "Creating new engine");
+		engine = sql:create_engine(params);
+		engines[sql.db2uri(params)] = engine;
+	end
+end
