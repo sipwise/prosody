@@ -43,7 +43,7 @@ WHERE ps.username = ? AND pd.domain = ? ORDER BY pa.is_primary DESC;
 ]];
 
 local um_user_exists = require "core.usermanager".user_exists;
-local mod_sql = module:require("sql");
+local mod_sql = require "util.sql";
 local params = module:get_option("auth_sql", {
 	driver = "MySQL",
 	database = "provisioning",

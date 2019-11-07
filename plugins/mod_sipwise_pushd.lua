@@ -9,7 +9,7 @@ module:depends("sipwise_vcard_cusax");
 module:depends("sipwise_pushd_blocking");
 
 local datamanager = require "util.datamanager";
-local mod_sql = module:require("sql");
+local mod_sql = require "util.sql";
 local format = string.format;
 local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;

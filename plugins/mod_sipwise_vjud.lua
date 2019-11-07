@@ -7,7 +7,7 @@
 module:depends("disco");
 
 local ut_jid = require "util.jid";
-local mod_sql = module:require("sql");
+local mod_sql = require "util.sql";
 local st = require "util.stanza";
 local template = require "util.template";
 local rex = require "rex_pcre";

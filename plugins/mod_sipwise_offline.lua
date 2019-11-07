@@ -4,7 +4,7 @@
 -- This project is MIT/X11 licensed. Please see the
 -- COPYING file in the source package for more information.
 --
-local mod_sql = module:require("sql");
+local mod_sql = require "util.sql";
 local params = module:get_option("sql", {});
 local engine = mod_sql:create_engine(params);
 

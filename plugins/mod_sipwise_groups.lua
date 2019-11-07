@@ -101,7 +101,7 @@ local function implode(delimiter, list, quoter)
     return string
 end
 
-local mod_sql = module:require("sql");
+local mod_sql = require "util.sql";
 local params = module:get_option("auth_sql", module:get_option("auth_sql"));
 local engine = mod_sql:create_engine(params);
 engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");
