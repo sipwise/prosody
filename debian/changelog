@@ -1,3 +1,13 @@
+ngcp-prosody-modules (7.5.2.1+0~mr7.5.2.1) unstable; urgency=medium
+
+  [ Manuel Montecelo ]
+  * [4361f49] Revert "TT#44917 Ship certain modules only on Debian/stretch"
+  * [093bde0] TT#66582 Change the dependency on prosody, it does not work with later versions
+
+  [ Sipwise Jenkins Builder ]
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 18 Nov 2019 14:47:07 +0100
+
 ngcp-prosody-modules (7.5.2.0+0~mr7.5.2.0) unstable; urgency=medium
 
   * New release.
