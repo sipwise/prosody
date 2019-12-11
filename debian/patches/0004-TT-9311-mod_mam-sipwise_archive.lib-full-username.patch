@@ -1,4 +1,3 @@
-From b17aec94a0563c5fab58ed350c1e32787ae3f7fe Mon Sep 17 00:00:00 2001
 From: Victor Seva <vseva@sipwise.com>
 Date: Thu, 19 Jan 2017 16:38:26 +0100
 Subject: [PATCH] TT#9311 mod_mam/sipwise_archive.lib: full username
@@ -62,6 +61,3 @@ index 087c306..46166f8 100644
  	engine.conn:commit();
  	return true;
  end
--- 
-2.11.0
-

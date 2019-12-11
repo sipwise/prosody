@@ -1,4 +1,3 @@
-From 9e93fb65101c48a62fec403541216f99e24a121a Mon Sep 17 00:00:00 2001
 From: Victor Seva <vseva@sipwise.com>
 Date: Thu, 19 Jan 2017 16:25:24 +0100
 Subject: [PATCH] TT#9303 mod_mam: sipwise_archive.lib fix crash at find()
@@ -38,6 +37,3 @@ index f772ea6..087c306 100644
  	res = engine:select(select_key_query, key);
  	local out = {};
  	for row in res do
--- 
-2.11.0
-
