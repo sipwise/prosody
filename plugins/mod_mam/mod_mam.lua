@@ -56,7 +56,16 @@ if archive.name == "null" or not archive.find then
 	archive = module:require "fallback_archive";
 end
 
+local use_total = true;
+
 local cleanup;
+
+local function schedule_cleanup(username)
+	if cleanup and not cleanup[username] then
+		table.insert(cleanup, username);
+		cleanup[username] = true;
+	end
+end
 
 -- Handle prefs.
 local function handle_prefs(event)
@@ -111,7 +120,9 @@ local function handle_mam_query(event)
 	local query = stanza.tags[1];
 	local qid = query.attr.queryid;
 
-	if cleanup then cleanup[origin.username] = true; end
+	origin.mam_requested = true;
+
+	schedule_cleanup(origin.username);
 
 	-- Search query parameters
 	local qwith, qstart, qend;
@@ -154,7 +165,7 @@ local function handle_mam_query(event)
 		limit = qmax + 1;
 		before = before; after = after;
 		reverse = reverse;
-		total = true;
+		total = use_total;
 	});
 
 	if not data then
@@ -274,15 +285,19 @@ local function message_handler(event, c2s)
 	local with = jid_bare(c2s and orig_to or orig_from);
 
 	-- Filter out <stanza-id> that claim to be from us
-	stanza:maptags(function (tag)
-		if tag.name == "stanza-id" and tag.attr.xmlns == xmlns_st_id then
-			local by_user, by_host, res = jid_prepped_split(tag.attr.by);
-			if not res and by_host == module.host and by_user == store_user then
-				return nil;
+	if stanza:get_child("stanza-id", xmlns_st_id) then
+		stanza = st.clone(stanza);
+		stanza:maptags(function (tag)
+			if tag.name == "stanza-id" and tag.attr.xmlns == xmlns_st_id then
+				local by_user, by_host, res = jid_prepped_split(tag.attr.by);
+				if not res and by_host == module.host and by_user == store_user then
+					return nil;
+				end
 			end
-		end
-		return tag;
-	end);
+			return tag;
+		end);
+		event.stanza = stanza;
+	end
 
 	-- We store chat messages or normal messages that have a body
 	if not(orig_type == "chat" or (orig_type == "normal" and stanza:get_child("body")) ) then
@@ -306,9 +321,11 @@ local function message_handler(event, c2s)
 		-- And stash it
 		local ok = archive:append(store_user, nil, stanza, time_now(), with);
 		if ok then
+			local clone_for_other_handlers = st.clone(stanza);
 			local id = ok;
-			stanza:tag("stanza-id", { xmlns = xmlns_st_id, by = store_user.."@"..host, id = id }):up();
-			if cleanup then cleanup[store_user] = true; end
+			clone_for_other_handlers:tag("stanza-id", { xmlns = xmlns_st_id, by = store_user.."@"..host, id = id }):up();
+			event.stanza = clone_for_other_handlers;
+			schedule_cleanup(store_user);
 			module:fire_event("archive-message-added", { origin = origin, stanza = stanza, for_user = store_user, id = id });
 		end
 	else
@@ -322,6 +339,7 @@ end
 
 local function strip_stanza_id(event)
 	local strip_by = jid_bare(event.origin.full_jid);
+	event.stanza = st.clone(event.stanza);
 	event.stanza:maptags(function(tag)
 		if not ( tag.attr.xmlns == xmlns_st_id and tag.attr.by == strip_by ) then
 			return tag;
@@ -361,13 +379,13 @@ if cleanup_after ~= "never" then
 	pcall(function ()
 		-- If this works, then we schedule cleanup for all known users on startup
 		for user in um.users(module.host) do
-			cleanup[user] = true;
+			schedule_cleanup(user);
 		end
 	end);
 
 	-- At odd intervals, delete old messages for one user
 	module:add_timer(math.random(10, 60), function()
-		local user = next(cleanup);
+		local user = table.remove(cleanup, 1);
 		if user then
 			module:log("debug", "Removing old messages for user %q", user);
 			local ok, err = archive:delete(user, { ["end"] = os.time() - cleanup_after; })
@@ -383,14 +401,26 @@ if cleanup_after ~= "never" then
 		end
 		return math.random(cleanup_interval, cleanup_interval * 2);
 	end);
+else
+	-- Don't ask the backend to count the potentially unbounded number of items,
+	-- it'll get slow.
+	use_total = false;
 end
 
 -- Stanzas sent by local clients
-module:hook("pre-message/bare", c2s_message_handler, 0);
-module:hook("pre-message/full", c2s_message_handler, 0);
+local priority = 0.075
+assert(priority < 0.1, "priority must be after mod_firewall");
+assert(priority > 0.05, "priority must be before mod_carbons");
+assert(priority > 0.01, "priority must be before strip_stanza_id");
+module:hook("pre-message/bare", c2s_message_handler, priority);
+module:hook("pre-message/full", c2s_message_handler, priority);
 -- Stanszas to local clients
-module:hook("message/bare", message_handler, 0);
-module:hook("message/full", message_handler, 0);
+priority = 0.075
+assert(priority > 0, "priority must be before mod_message");
+assert(priority < 0.1, "priority must be after mod_firewall");
+assert(priority > 0.05, "priority must be before mod_carbons");
+module:hook("message/bare", message_handler, priority);
+module:hook("message/full", message_handler, priority);
 
 module:add_feature(xmlns_mam0); -- COMPAT with XEP-0313 v 0.1
 
