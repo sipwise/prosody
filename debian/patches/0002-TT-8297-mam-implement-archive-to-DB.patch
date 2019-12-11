@@ -1,20 +1,21 @@
-From 0dd1a7404c27b4a9352f196d52462b7ae6237590 Mon Sep 17 00:00:00 2001
 From: Victor Seva <vseva@sipwise.com>
 Date: Tue, 3 Jan 2017 17:14:49 +0100
 Subject: [PATCH] TT#8297 mam: implement archive to DB
 
 Change-Id: If9644ac66fdd257a430cfb7fa185230c77cd783e
+
+Change-Id: I587debda7ed78cc51088bd4a5ba96c878db45e6f
 ---
- plugins/mod_mam/mod_mam.lua             |  17 +---
+ plugins/mod_mam/mod_mam.lua             |  16 +---
  plugins/mod_mam/sipwise_archive.lib.lua | 165 ++++++++++++++++++++++++++++++++
- 2 files changed, 166 insertions(+), 16 deletions(-)
+ 2 files changed, 166 insertions(+), 15 deletions(-)
  create mode 100644 plugins/mod_mam/sipwise_archive.lib.lua
 
 diff --git a/plugins/mod_mam/mod_mam.lua b/plugins/mod_mam/mod_mam.lua
-index a4aa014..13e0a0b 100644
+index f8a2321..faff0dd 100644
 --- a/plugins/mod_mam/mod_mam.lua
 +++ b/plugins/mod_mam/mod_mam.lua
-@@ -40,22 +40,7 @@ if global_default_policy ~= "roster" then
+@@ -40,21 +40,7 @@ if global_default_policy ~= "roster" then
  	global_default_policy = module:get_option_boolean("default_archive_policy", global_default_policy);
  end
  
@@ -33,11 +34,10 @@ index a4aa014..13e0a0b 100644
 -	module:log("info", "Using in-memory fallback archive driver");
 -	archive = module:require "fallback_archive";
 -end
--
 +local archive = module:require "sipwise_archive";
- local cleanup;
  
- -- Handle prefs.
+ local use_total = true;
+ 
 diff --git a/plugins/mod_mam/sipwise_archive.lib.lua b/plugins/mod_mam/sipwise_archive.lib.lua
 new file mode 100644
 index 0000000..f772ea6
@@ -209,6 +209,3 @@ index 0000000..f772ea6
 +end
 +
 +return archive_store;
--- 
-2.11.0
-
