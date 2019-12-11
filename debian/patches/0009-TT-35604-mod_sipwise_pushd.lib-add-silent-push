@@ -1,6 +1,16 @@
+From: Sipwise Development Team <support@sipwise.com>
+Date: Wed, 11 Dec 2019 11:15:14 +0100
+Subject: TT-35604-mod_sipwise_pushd.lib-add-silent-push
+
+---
+ plugins/mod_sipwise_pushd.lua | 58 ++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 49 insertions(+), 9 deletions(-)
+
+diff --git a/plugins/mod_sipwise_pushd.lua b/plugins/mod_sipwise_pushd.lua
+index e29453a..229a2dd 100644
 --- a/plugins/mod_sipwise_pushd.lua
 +++ b/plugins/mod_sipwise_pushd.lua
-@@ -61,6 +61,18 @@
+@@ -61,6 +61,18 @@ SELECT vp.attribute, vup.value FROM provisioning.voip_preferences vp
  WHERE vp.attribute = 'mobile_push_enable'
    AND vd.domain = ?;
  ]];
@@ -19,7 +29,7 @@
  local engine;
  
  -- luacheck: ignore request
-@@ -74,6 +86,21 @@
+@@ -74,6 +86,21 @@ local function process_response(response, code, request)
  	end
  end
  
@@ -41,7 +51,7 @@
  local function push_enable(username, domain)
  	-- Reconnect to DB if necessary
  	if not engine.conn:ping() then
-@@ -303,20 +330,25 @@
+@@ -303,20 +330,25 @@ local function handle_offline(event)
  		msg.data_sender_name = tostring(caller_info.display_name);
  		return msg;
  	end
@@ -74,7 +84,7 @@
  		if stanza.attr.type == 'groupchat' then
  			msg.data_type = 'groupchat'
  			caller_jid = get_muc_caller(stanza.attr.from);
-@@ -325,6 +357,7 @@
+@@ -325,6 +357,7 @@ local function handle_offline(event)
  			caller_info = get_caller_info(caller_jid, caller_defaults) or
  				caller_defaults;
  			muc = get_muc_info(stanza, caller_info);
@@ -82,7 +92,7 @@
  		else
  			msg.data_type = 'message';
  			caller_jid = format("%s@%s",
-@@ -340,13 +373,19 @@
+@@ -340,13 +373,19 @@ local function handle_offline(event)
  			caller_info = get_caller_info(caller_jid, caller_defaults) or
  				caller_defaults;
  			muc = get_muc_info(stanza, caller_info);
@@ -103,7 +113,7 @@
  		end
  		return msg;
  	end
-@@ -445,6 +484,7 @@
+@@ -445,6 +484,7 @@ local function handle_muc_offline(event, room_jid)
  end
  
  local function handle_msg(event)
@@ -111,7 +121,7 @@
  	local stanza = event.stanza;
  	local room_jid = stanza.attr.to;
  
-@@ -529,5 +569,5 @@
+@@ -529,5 +569,5 @@ function module.load()
  	sql_config   = module:get_option("auth_sql", sql_config);
  	engine = mod_sql:create_engine(sql_config);
  	engine:execute("SET NAMES 'utf8' COLLATE 'utf8_bin';");

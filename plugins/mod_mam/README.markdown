@@ -1,6 +1,6 @@
 ---
 labels:
-- 'Stage-Beta'
+- 'Stage-Merged'
 summary: 'XEP-0313: Message Archive Management'
 ...
 

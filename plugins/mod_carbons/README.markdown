@@ -1,6 +1,6 @@
 ---
 labels:
-- 'Stage-Beta'
+- 'Stage-Merged'
 summary: Message Carbons
 ...
 

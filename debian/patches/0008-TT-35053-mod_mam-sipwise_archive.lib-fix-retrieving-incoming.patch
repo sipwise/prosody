@@ -1,6 +1,16 @@
+From: Sipwise Development Team <support@sipwise.com>
+Date: Wed, 11 Dec 2019 11:15:14 +0100
+Subject: TT-35053-mod_mam-sipwise_archive.lib-fix-retrieving-incoming
+
+---
+ plugins/mod_mam/sipwise_archive.lib.lua | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/plugins/mod_mam/sipwise_archive.lib.lua b/plugins/mod_mam/sipwise_archive.lib.lua
+index 15acb33..533df4f 100644
 --- a/plugins/mod_mam/sipwise_archive.lib.lua
 +++ b/plugins/mod_mam/sipwise_archive.lib.lua
-@@ -36,7 +36,7 @@
+@@ -36,7 +36,7 @@ WHERE `key` = UuidToBin(?);
  
  local select_query_base=[[
  SELECT UuidFromBin(`key`),`stanza`,`epoch`,`with` FROM `sipwise_mam`
@@ -9,7 +19,7 @@
  ]]
  
  -- Reconnect to DB if necessary
-@@ -100,7 +100,7 @@
+@@ -100,7 +100,7 @@ function archive_store:find(username, query)
  	local qstart, qend, qwith = -math.huge, math.huge;
  	local qlimit, qid;
  	local db_query = select_query_base;
@@ -18,7 +28,7 @@
  	local i, values = 0;
  
  	if query then
-@@ -118,7 +118,8 @@
+@@ -118,7 +118,8 @@ function archive_store:find(username, query)
  	end
  
  	if qwith then
