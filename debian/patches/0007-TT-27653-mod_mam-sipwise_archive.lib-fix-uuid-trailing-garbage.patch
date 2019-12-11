@@ -1,6 +1,16 @@
+From: Sipwise Development Team <support@sipwise.com>
+Date: Wed, 11 Dec 2019 11:15:14 +0100
+Subject: TT-27653-mod_mam-sipwise_archive.lib-fix-uuid-trailing-garbage
+
+---
+ plugins/mod_mam/sipwise_archive.lib.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/plugins/mod_mam/sipwise_archive.lib.lua b/plugins/mod_mam/sipwise_archive.lib.lua
+index e58f593..15acb33 100644
 --- a/plugins/mod_mam/sipwise_archive.lib.lua
 +++ b/plugins/mod_mam/sipwise_archive.lib.lua
-@@ -56,7 +56,7 @@
+@@ -56,7 +56,7 @@ local function load_db(query, _params)
  	res = engine:select(query, unpack(_params));
  	local out = {};
  	for row in res do

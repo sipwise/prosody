@@ -113,7 +113,7 @@ local function send_push_iqs(username, host, command_type, jids)
 	end
 
 	for resource, session in pairs(prosody.bare_sessions[bare_jid].sessions) do
-		local iq_push_stanza = st.iq({ type = "set", to = bare_jid.."/"..resource });
+		local iq_push_stanza = st.iq({ type = "set", to = bare_jid.."/"..resource, id = "blocking-push" });
 		iq_push_stanza:add_child(stanza_content);
 		session.send(iq_push_stanza);
 	end
