@@ -6,5 +6,4 @@ mod_auth_sql.path
 0005-TT-9317-mod_mam-don-t-store-bodyless-chat-messages.patch
 0006-TT-9314-mod_mam-sipwise_archive.lib-support-emojis.patch
 0007-TT-27653-mod_mam-sipwise_archive.lib-fix-uuid-trailing-garbage.patch
-0008-TT-35053-mod_mam-sipwise_archive.lib-fix-retrieving-incoming.patch
 0009-TT-35604-mod_sipwise_pushd.lib-add-silent-push
