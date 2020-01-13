@@ -1,3 +1,10 @@
+ngcp-prosody-modules (8.0.3.0+0~mr8.0.3.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [4bf8347] TT#72257 refresh plugins from upstream
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 13 Jan 2020 15:20:57 +0100
+
 ngcp-prosody-modules (8.0.2.0+0~mr8.0.2.0) unstable; urgency=medium
 
   * New release.
