@@ -1,0 +1,160 @@
+#!/usr/bin/env lua5.2
+
+local CFG_SOURCEDIR='/usr/lib/prosody';
+local CFG_CONFIGDIR='/etc/prosody';
+
+local mam_query =[[
+select `id`, `username`,UuidFromBin(`key`),`stanza`,`epoch`,`with`
+from sipwise_mam as mam
+where UuidFromBin(`key`) not in (select `key` from prosodyarchive)
+order by username, id asc;
+]]
+
+local mam_del =[[
+delete from sipwise_mam where id = ?;
+]]
+
+local archive_insert =[[
+insert into `prosodyarchive` (`host`,`user`,`store`,`key`,`when`,`with`,`type`,`value`)
+values(?,?,'archive',?,?,?,'xml',?);
+]]
+
+local offline_query =[[
+select `id`, `domain`, `username`, `stanza`
+from sipwise_offline
+order by username, id asc;
+]]
+
+local offline_del = [[
+delete from sipwise_offline where id = ?;
+]]
+
+local offline_insert =[[
+insert into `prosodyarchive` (`host`,`user`,`store`,`key`,`when`,`with`,`type`,`value`)
+values(?,?,'offline',?,?,'','xml',?);
+]]
+
+local prosodyarchive_count =[[
+select count(sort_id) from prosodyarchive;
+]]
+
+local function is_relative(path)
+    local path_sep = package.config:sub(1,1);
+    return ((path_sep == "/" and path:sub(1,1) ~= "/")
+    or (path_sep == "\\" and (path:sub(1,1) ~= "/" and path:sub(2,3) ~= ":\\")))
+end
+
+-- Tell Lua where to find our libraries
+if CFG_SOURCEDIR then
+    local function filter_relative_paths(path)
+        if is_relative(path) then return ""; end
+    end
+    local function sanitise_paths(paths)
+        return (paths:gsub("[^;]+;?", filter_relative_paths):gsub(";;+", ";"));
+    end
+    package.path = sanitise_paths(CFG_SOURCEDIR.."/?.lua;"..package.path);
+    package.cpath = sanitise_paths(CFG_SOURCEDIR.."/?.so;"..package.cpath);
+end
+
+local configmanager = require "core.configmanager";
+local ok, _, err = configmanager.load(CFG_CONFIGDIR.."/prosody.cfg.lua", "lua")
+
+if not ok then
+    print("Error: can't load the config file."..err);
+    os.exit(1);
+end
+
+local sql_config = configmanager.get("*", "sql");
+
+if not sql_config then
+    print("Error: sql not found in the config file.");
+    os.exit(1);
+end
+
+local deserialize = require "util.serialization".deserialize;
+local st = require "util.stanza";
+local sql = require "util.sql";
+local jid_split = require "util.jid".split;
+local uuid = require "util.uuid".generate;
+local timestamp_parse = require "util.datetime".parse;
+
+local engine = sql:create_engine(sql_config);
+engine:connect();
+
+-- from mod_storage_sql.lua of prosody 0.11.3
+local function create_table()
+    local Table, Column, Index = sql.Table, sql.Column, sql.Index;
+
+    local ProsodyArchiveTable = Table {
+        name="prosodyarchive";
+        Column { name="sort_id", type="INTEGER", primary_key=true, auto_increment=true };
+        Column { name="host", type="TEXT", nullable=false };
+        Column { name="user", type="TEXT", nullable=false };
+        Column { name="store", type="TEXT", nullable=false };
+        Column { name="key", type="TEXT", nullable=false }; -- item id
+        Column { name="when", type="INTEGER", nullable=false }; -- timestamp
+        Column { name="with", type="TEXT", nullable=false }; -- related id
+        Column { name="type", type="TEXT", nullable=false };
+        Column { name="value", type="MEDIUMTEXT", nullable=false };
+        Index { name="prosodyarchive_index", unique = engine.params.driver ~= "MySQL", "host", "user", "store", "key" };
+        Index { name="prosodyarchive_with_when", "host", "user", "store", "with", "when" };
+        Index { name="prosodyarchive_when", "host", "user", "store", "when" };
+    };
+    engine:transaction(function()
+        ProsodyArchiveTable:create(engine);
+    end);
+end
+
+local function check_prosodyarchive()
+    for row in engine:select(prosodyarchive_count) do --luacheck: ignore
+        return row[1]
+    end
+end
+
+local function migrate_mam()
+    local i = 0
+    for row in engine:select(mam_query) do
+        local user, host, _ = jid_split(row[2]);
+        -- print("id:"..row[1].." username:"..row[2].." uuid:"..row[3]);
+        local stanza = st.deserialize(deserialize(row[4]));
+        -- print("stanza:"..tostring(stanza));
+        engine:insert(archive_insert, host, user, row[3], row[5], row[6], tostring(stanza));
+        engine:delete(mam_del, row[1]);
+        i = i + 1;
+    end
+    if i > 0 then
+        engine.conn:commit();
+        print("migrated "..i.." mam messages");
+    end
+end
+
+local function migrate_offline()
+    local i = 0
+    for row in engine:select(offline_query) do
+        -- print("id:"..row[1].." username:"..row[3].." domain:"..row[2]);
+        local stanza = st.deserialize(deserialize(row[4]));
+        local when = timestamp_parse(stanza.attr.stamp)
+        stanza.attr.stamp, stanza.attr.stamp_legacy = nil, nil;
+        engine:insert(offline_insert, row[2], row[3], uuid(), when, tostring(stanza));
+        engine:delete(offline_del, row[1]);
+        i = i + 1;
+    end
+    if i > 0 then
+        engine.conn:commit();
+        print("migrated "..i.." offline messages");
+    end
+end
+
+if arg[1] == '--create' then
+    if pcall(check_prosodyarchive) then
+        print("prosodyarchive already there");
+    else
+        create_table();
+        if check_prosodyarchive() then
+            print("prosodyarchive created");
+        end
+    end
+else
+    migrate_mam();
+    migrate_offline();
+end

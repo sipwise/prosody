@@ -17,6 +17,7 @@ Depends:
  lua-redis,
  lua-rex-pcre,
  lua-sec,
+ lua5.2,
  prosody (>= 0.11~),
  ${misc:Depends},
 Description: ngcp modules for the prosody Jabber/XMPP server
