@@ -1,3 +1,19 @@
+ngcp-prosody-modules (8.3.0.0+0~mr8.3.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [0f25a1c] TT#72257 refresh plugins from upstream
+  * [34e3345] TT#35053 remove mod_mam patch for sipwise_archive.lib
+  * [4fb063d] TT#66583 remove modules merged at prosody 0.11 version
+  * [937d0dd] TT#66583 remove patch for own module
+  * [f9b0c6f] TT#66583 fix load module error
+  * [157f5fe] TT#66583 changes needed for support 0.11
+  * [a1721ca] TT#66583 remove unussed mod_sipwise_offline
+
+  [ Alexander Lutay ]
+  * [731a058] TT#66583 Add util/prosody_sipwise_migrator for upgrade to prosody 0.11
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 27 Jan 2020 12:25:14 +0100
+
 ngcp-prosody-modules (8.2.0.0+0~mr8.2.0.0) unstable; urgency=medium
 
   * New release.
