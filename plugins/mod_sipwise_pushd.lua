@@ -56,7 +56,7 @@ WHERE vp.attribute = 'mobile_push_enable'
 ]];
 
 local push_silent_query = [[
-SELECT "1" FROM provisioning.voip_preferences vp
+SELECT vp.id FROM provisioning.voip_preferences vp
   LEFT JOIN provisioning.voip_usr_preferences vup ON vup.attribute_id = vp.id
   LEFT JOIN provisioning.voip_subscribers vs ON vs.id = vup.subscriber_id
   LEFT JOIN provisioning.voip_domains vd ON vd.id = vs.domain_id
@@ -91,10 +91,8 @@ end
 local function push_silent(username, domain, other)
 	reconect_check();
 	for row in engine:select(push_silent_query, username, domain, other) do
-		if row[1] == "1" then
-			module:log("debug", "silent push preference mobile_push_silent_list matches");
-			return true;
-		end
+		module:log("debug", "silent push preference mobile_push_silent_list matches");
+		return true;
 	end
 	return false;
 end
