@@ -17,7 +17,7 @@ local redis_client;
 local redis_mucs = module:shared("redis_mucs");
 
 local function test_connection()
-	if not redis_client then return nil end;
+	if not redis_client then return nil; end
 	local ok, _ = pcall(redis_client.ping, redis_client);
 	if not ok then
 		redis_client = nil;
@@ -33,9 +33,33 @@ end
 
 local function muc_created(event)
 	local room = event.room;
+	local rhost = redis_client:get(room.jid);
 
+	if rhost then
+		module:log("warn", "[%s] already at %s", room.jid, rhost);
+		return nil;
+	end
 	redis_mucs.set_room_host(room.jid, redis_config.server_id);
 	module:log("debug", "muc-room-created %s", room.jid);
+end
+
+local function muc_pre_restore(event)
+	local room_jid = event.jid;
+	local rhost = redis_client:get(room_jid);
+
+	if rhost ~= redis_config.server_id then
+		module:log("warn", "[%s] already at %s", room_jid, rhost);
+		return false;
+	end
+	module:log("debug", "[%s] already here", room_jid);
+	return true;
+end
+
+local function muc_restored(event)
+	local room = event.room;
+
+	redis_mucs.set_room_host(room.jid, redis_config.server_id);
+	module:log("debug", "muc-room-restored %s", room.jid);
 end
 
 local function muc_destroyed(event)
@@ -107,6 +131,15 @@ function module.load()
 	redis_config = module:get_option("redis_sessions_auth", redis_config);
 end
 
+function shutdown_component()
+	local rooms = redis_mucs.get_rooms(module:get_host());
+
+	for room_jid in rooms do
+		redis_mucs.clean_room_host(room_jid, redis_config.server_id);
+	end
+end
+module:hook_global("server-stopping", shutdown_component, -300);
+
 function module.add_host(module)
 	local host = module:get_host();
 	local _type = module:get_host_type();
@@ -114,6 +147,8 @@ function module.add_host(module)
 	if _type == "component" then
 		module:hook("muc-room-created", muc_created, 200);
 		module:hook("muc-room-destroyed", muc_destroyed, 200);
+		module:hook("muc-room-restored", muc_restored, 200);
+		module:hook("muc-room-pre-restore", muc_pre_restore, 200);
 	end
 	module:log("debug", "hooked at %s as %s", host, _type);
 end
