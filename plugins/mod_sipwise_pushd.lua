@@ -13,6 +13,8 @@ local sql = require "util.sql";
 local format = string.format;
 local jid_split = require "util.jid".split;
 local jid_bare = require "util.jid".bare;
+local jid_host = require "util.jid".host;
+local jid_resource = require "util.jid".resource;
 local hosts = prosody.hosts;
 local http = require "net.http";
 local uuid = require "util.uuid";
@@ -144,8 +146,8 @@ end
 
 local function get_members(muc_room)
 	local res = set.new();
-	if muc_room and muc_room._affiliations then
-		for o_jid, _ in pairs(muc_room._affiliations) do
+	if muc_room then
+		for o_jid, _, _ in muc_room:each_affiliation() do
 			res:add(o_jid);
 		end
 	end
@@ -154,58 +156,35 @@ end
 
 local function get_occupants(muc_room)
 	local res = set.new();
-	for _, occupant in pairs(muc_room._occupants) do
+	for _, occupant in muc_room:each_occupant() do
 		res:add(jid_bare(occupant.jid));
 	end
 	return res;
 end
 
-local function get_nick(muc_room, occ_jid)
-	if not occ_jid then return nil end
-	local bare_occ_jid = jid_bare(occ_jid)
-	for nick, occupant in pairs(muc_room._occupants) do
-		if jid_bare(occupant.jid) == bare_occ_jid then
-			return nick;
-		end
-	end
-end
-
-local function get_jid_from_nick(muc_room, occ_nick)
-	if not occ_nick then return nil end
-
-	for nick, occupant in pairs(muc_room._occupants) do
-		if  occ_nick == nick then
-			return occupant.jid;
-		end
-	end
-end
-
 local function get_muc_room(room_jid)
-	local _, host, _ = jid_split(room_jid);
+	local host = jid_host(room_jid);
 
-	if not hosts[host]then
+	if not hosts[host] then
 		module:log("warn", "host [%s] not defined", tostring(host));
 		return nil
 	end
-	if not hosts[host].muc then
+	if not hosts[host].modules.muc then
 		module:log("warn", "muc not enabled here [%s]", tostring(host));
 		return nil
 	end
-	if not hosts[host].muc.rooms then
-		module:log("warn", "muc with no rooms defined at [%s]??",
-			tostring(host));
-		return nil
-	end
-	return hosts[host].muc.rooms[jid_bare(room_jid)];
+	return hosts[host].modules.muc.get_room_from_jid(jid_bare(room_jid));
 end
 
 local function get_muc_caller(room_jid)
-	local room = get_muc_room(room_jid)
+	local nick = jid_resource(room_jid);
+
+	local room = get_muc_room(room_jid);
 	if not room then
-		module:log("warn", "room %s not here", room_jid);
+		module:log("warn", "room %s not here", jid_bare(room_jid));
 		return nil;
 	end
-	return get_jid_from_nick(room, room_jid);
+	return room:get_occupant_by_nick(nick);
 end
 
 local function get_callee_badge(jid)
@@ -251,26 +230,26 @@ local function get_muc_info(stanza, caller_info)
 	local room;
 
 	if muc_stanza then
-		muc['jid'] = muc_stanza.attr.jid;
+		muc.jid = muc_stanza.attr.jid;
 	else
-		muc['jid'] = jid_bare(from);
+		muc.jid = jid_bare(from);
 	end
-	muc['name'], muc['domain'] = jid_split(muc['jid']);
-	if not is_local_domain(muc['domain']) then
+	muc.name, muc.domain = jid_split(muc.jid);
+	if not is_local_domain(muc.domain) then
 		module:log("debug", "not from local host[%s]", tostring(muc.domain));
 		return nil;
 	end
-	local room_host = hosts[muc['domain']].muc;
+	local room_host = hosts[muc.domain].modules.muc;
 	if not room_host then
 		module:log("debug", "not from MUC host[%s]", muc.domain);
 		return nil;
 	end
-	room = room_host.rooms[muc['jid']];
+	room = room_host.get_room_from_jid(muc.jid);
 	if room then
-		muc['room'] = room:get_description() or muc['name'];
+		muc.room = room:get_description() or muc.name;
 		if muc_stanza then
-			muc['invite'] = format("Group chat invitation to '%s' from %s",
-				muc['room'], caller_info.display_name);
+			muc.invite = format("Group chat invitation to '%s' from %s",
+				muc.room, caller_info.display_name);
 		end
 		return muc;
 	end
@@ -424,7 +403,7 @@ local function fire_offline_message(event, muc_room, off_jid)
 	local stanza_c = st.clone(event.stanza);
 	local orig_from = event.stanza.attr.from;
 	stanza_c.attr.to = off_jid;
-	stanza_c.attr.from = get_nick(muc_room, orig_from);
+	stanza_c.attr.from = muc_room:get_occupant_jid(orig_from);
 
 	module:log("debug", "stanza[%s] stanza_c[%s]",
 		tostring(event.stanza), tostring(stanza_c));
@@ -449,10 +428,10 @@ end
 
 local function handle_muc_offline(event, room_jid)
 	local _, host = jid_split(room_jid);
-	local muc = hosts[host].muc;
+	local muc = hosts[host].modules.muc;
 
 	if  muc then
-		local muc_room = hosts[host].muc.rooms[room_jid];
+		local muc_room = muc.get_room_from_jid(room_jid);
 		if not muc_room then
 			module:log("debug", "muc room[%s] not here. Nothing to do",
 				room_jid);
@@ -518,9 +497,9 @@ local function handle_muc_presence(event)
 	local room = get_muc_room(stanza.attr.to);
 	if not room then return; end
 	local from_jid = jid_bare(stanza.attr.from);
-	local affiliation = room._affiliations[from_jid];
+	local affiliation = room:get_affiliation(from_jid);
 	if affiliation ~= "owner" then
-		room._affiliations[from_jid] = "owner";
+		room:set_affiliation(true, from_jid, "owner");
 		module:log("debug", "[%s] set affiliation to 'owner' for [%s]",
 			room:get_name(), from_jid);
 	end
