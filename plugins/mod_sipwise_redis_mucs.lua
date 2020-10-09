@@ -108,9 +108,12 @@ function module.load()
 end
 
 function module.add_host(module)
-	if module:get_host_type() == "component" then
+	local host = module:get_host();
+	local _type = module:get_host_type();
+
+	if _type == "component" then
 		module:hook("muc-room-created", muc_created, 200);
 		module:hook("muc-room-destroyed", muc_destroyed, 200);
 	end
-	module:log("debug", "hooked at %s", module:get_host());
+	module:log("debug", "hooked at %s as %s", host, _type);
 end

@@ -130,11 +130,12 @@ end
 
 function module.add_host(module)
 	local host = module:get_host();
+	local _type = module:get_host_type();
 
-	if module:get_host_type() ~= "component" then
+	if _type ~= "component" then
 		module:hook("resource-bind", resource_bind, 200);
 		module:hook("resource-unbind", resource_unbind, 200);
 		clean_local_sessions(host);
-		module:log("debug", "hooked at %s", host);
 	end
+	module:log("debug", "hooked at %s as %s", host, _type);
 end
