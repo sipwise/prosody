@@ -11,10 +11,12 @@ local DBI = require "DBI"
 local hostmanager = require "core.hostmanager";
 local configmanager = require "core.configmanager";
 local ut = require "util.table";
+local set = require "util.set";
 
 local connection;
 local params = module:get_option("auth_sql", module:get_option("auth_sql"));
 local prosody = _G.prosody;
+local vhosts = set.new();
 
 local function test_connection()
 	module:log("debug", "test_connection");
@@ -84,48 +86,87 @@ local function getsql(sql, ...)
 	return stmt;
 end
 
+local function activate_search(host)
+	module:log("debug", "activate implicit search.%s", host);
+	configmanager.set("search."..host, "component_module",
+		"sipwise_vjud");
+	local search_config = configmanager.getconfig()["search."..host];
+	hostmanager.activate("search."..host, search_config);
+end
+
+local function activate_muc(host)
+	local host_modules = configmanager.get(host, "modules_enabled");
+	local conference_modules = {};
+
+	module:log("debug", "modules_enabled[%s]: %s", host,
+		ut.table.tostring(host_modules));
+
+	configmanager.set("conference."..host, "component_module",
+		"muc");
+	if ut.table.contains(host_modules, "shard") then
+		ut.table.add(conference_modules, "sipwise_redis_mucs");
+		ut.table.add(conference_modules, "shard");
+	end
+	if ut.table.contains(host_modules, "sipwise_pushd") then
+		ut.table.add(conference_modules, "sipwise_pushd");
+	end
+	module:log("debug", "conference_modules[%s]: %s",
+		"conference."..host, ut.table.tostring(host_modules));
+	configmanager.set("conference."..host, "modules_enabled",
+		conference_modules);
+	local conference_config = configmanager.getconfig()["conference."..host];
+	conference_config['restrict_room_creation'] = 'local';
+	hostmanager.activate("conference."..host, conference_config);
+	module:log("debug", "modules_enabled[%s]: %s", "conference."..host,
+		ut.table.tostring(conference_config['modules_enabled']));
+end
+
+local function add_vhost(host)
+	local host_config = { enable = true };
+
+	module:log("debug", "activate host %s", host);
+	vhosts:add(host);
+	hostmanager.activate(host, host_config);
+
+	activate_search(host);
+	activate_muc(host);
+end
+
 local function load_vhosts_from_db()
 	local stmt, _ = getsql("SELECT `domain` FROM `domain`");
-	local host_config = { enable = true };
 	if stmt then
 		for row in stmt:rows(true) do
-			module:log("debug", "load_vhosts_from_db: activate host %s",
-				row.domain);
-			hostmanager.activate(row.domain, host_config);
-			local host_modules = configmanager.get(row.domain, "modules_enabled");
-			module:log("debug", "modules_enabled[%s]: %s", row.domain,
-				ut.table.tostring(host_modules));
-
-			module:log("debug",
-				"load_vhosts_from_db: activate implicit search.%s",
-				row.domain);
-			configmanager.set("search."..row.domain, "component_module",
-				"sipwise_vjud");
-			local search_config = configmanager.getconfig()["search."..row.domain];
-			hostmanager.activate("search."..row.domain, search_config);
-
-
-			configmanager.set("conference."..row.domain, "component_module",
-				"muc");
-			local conference_modules = {};
-			if ut.table.contains(host_modules, "shard") then
-				ut.table.add(conference_modules, "sipwise_redis_mucs");
-				ut.table.add(conference_modules, "shard");
-			end
-			if ut.table.contains(host_modules, "sipwise_pushd") then
-				ut.table.add(conference_modules, "sipwise_pushd");
-			end
-			module:log("debug", "conference_modules[%s]: %s",
-				"conference."..row.domain, ut.table.tostring(host_modules));
-			configmanager.set("conference."..row.domain, "modules_enabled",
-				conference_modules);
-			local conference_config = configmanager.getconfig()["conference."..row.domain];
-			conference_config['restrict_room_creation'] = 'local';
-			hostmanager.activate("conference."..row.domain, conference_config);
-			module:log("debug", "modules_enabled[%s]: %s", "conference."..row.domain,
-				ut.table.tostring(conference_config['modules_enabled']));
+			add_vhost(row.domain);
 		end
 	end
 end
 
+local function check_vhosts(host)
+	if ut.string.starts(host, 'search.') or
+	   ut.string.starts(host, 'conference.') or
+	   vhosts:contains(host) then
+		module:log("debug", "%s activated, nothing to do", host);
+		return
+	end
+	module:log("info", "%s activate subdomains", host);
+	activate_search(host);
+	activate_muc(host);
+	vhosts:add(host);
+end
+
+local function deactivate_vhost(host)
+	if ut.string.starts(host, 'search.') or
+	   ut.string.starts(host, 'conference.') or
+	   not vhosts:contains(host) then
+		module:log("debug", "%s deactivated, nothing to do", host);
+		return
+	end
+	module:log("info", "%s deactivate subdomains", host);
+	hostmanager.deactivate("search."..host, 'main domain deactivated');
+	hostmanager.deactivate("conference."..host, 'main domain deactivated');
+	vhosts:remove(host);
+end
+
 module:hook("server-started", load_vhosts_from_db);
+module:hook("host-activated", check_vhosts);
+module:hook("host-deactivated", deactivate_vhost);
