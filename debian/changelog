@@ -1,3 +1,10 @@
+ngcp-prosody-modules (8.5.2.1+0~mr8.5.2.1) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [53e8bd1] TT#92952 sipwise_pushd: fix mobile_push_silent_list query
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 19 Oct 2020 14:29:25 +0200
+
 ngcp-prosody-modules (8.5.2.0+0~mr8.5.2.0) unstable; urgency=medium
 
   * New release.
