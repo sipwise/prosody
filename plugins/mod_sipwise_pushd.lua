@@ -332,7 +332,7 @@ local function handle_offline(event)
 				origin.host or caller.host);
 			if is_invite(stanza) then
 				msg.data_type = 'invite';
-				caller_jid = jid_bare(invite:get_child('invite').attr.from) or
+				caller_jid = jid_bare(stanza:get_child('invite').attr.from) or
 					caller_jid;
 			elseif is_attachment(stanza) then
 				msg.data_message = "new attachment";
