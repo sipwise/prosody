@@ -1,3 +1,16 @@
+ngcp-prosody-modules (7.5.6.2+0~mr7.5.6.2) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [3b2a604] TT#35053 remove mod_mam patch for sipwise_archive.lib
+  * [6f72a05] TT#96550 mod_sipwise_redis_*: add some more debug info at add_host()
+  * [7355e10] TT#15822 mod_sipwise_pushd: fix error introduced back in 2017
+  * [381a2c0] TT#97400 sipwise_vhosts_sql: fix [de]activation of vhost via ngcp-panel
+
+  [ Richard Fuchs ]
+  * [3488bd1] TT#20350 mod_auth_sql: check subscriber lock level
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 20 Oct 2020 11:26:26 +0200
+
 ngcp-prosody-modules (7.5.6.1+0~mr7.5.6.1) unstable; urgency=medium
 
   * New release.
