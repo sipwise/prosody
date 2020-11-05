@@ -8,7 +8,7 @@
 module:set_global();
 local jid = require "util.jid";
 local add_filter = require "util.filters".add_filter;
-local ut = require "util.table";
+local ut = require "ngcp.utils";
 local log = module._log;
 
 local config_default = {
