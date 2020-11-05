@@ -7,7 +7,7 @@
 --
 module:set_global();
 local socket = require "socket"
-local ut = require "util.table";
+local ut = require "ngcp.utils";
 local logger = require "util.logger";
 local st = require "util.stanza";
 local new_xmpp_stream = require "util.xmppstream".new;
@@ -206,14 +206,14 @@ local function handle_send(event)
         queue[shard] = {};
     end
     if stanza.attr.via then
-        local via = ut.string.explode(';', stanza.attr.via);
+        local via = ut.explode(';', stanza.attr.via);
         module:log("debug", "via:%s", ut.table.tostring(via));
         if ut.table.contains(via, shard_name) then
             module:log("error", "loop detected, stanza[%s]", stanza);
             return;
         end
         table.insert(via, shard_name);
-        stanza.attr.via = ut.table.implode(';', via);
+        stanza.attr.via = ut.implode(';', via);
     else
         stanza.attr.via = shard_name;
     end
