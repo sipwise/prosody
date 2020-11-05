@@ -13,7 +13,7 @@ local template = require "util.template";
 local rex = require "rex_pcre";
 local prosodyctl = require "util.prosodyctl"
 local dataforms_new = require "util.dataforms".new;
-local ut = require "util.table";
+local ut = require "ngcp.utils";
 local hosts = prosody.hosts;
 
 local form_layout = dataforms_new{
