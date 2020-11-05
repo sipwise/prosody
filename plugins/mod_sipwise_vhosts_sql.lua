@@ -10,7 +10,7 @@ module:set_global();
 local DBI = require "DBI"
 local hostmanager = require "core.hostmanager";
 local configmanager = require "core.configmanager";
-local ut = require "util.table";
+local ut = require "ngcp.utils";
 local set = require "util.set";
 
 local connection;

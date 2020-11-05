@@ -16,7 +16,7 @@ local jid_bare = require "util.jid".bare;
 local hosts = prosody.hosts;
 local http = require "net.http";
 local uuid = require "util.uuid";
-local ut = require "util.table";
+local ut = require "ngcp.utils";
 local set = require "util.set";
 local st = require "util.stanza";
 
