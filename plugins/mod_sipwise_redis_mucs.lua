@@ -6,7 +6,7 @@
 --
 module:set_global();
 local set = require "util.set";
-local ut = require "util.table";
+local ut = require "ngcp.utils";
 local jid = require "util.jid";
 local redis = require 'redis';
 local redis_config = {
@@ -46,7 +46,7 @@ local function muc_destroyed(event)
 end
 
 local function split_key(key)
-	local t = ut.string.explode(':', key);
+	local t = ut.explode(':', key);
 	return t[1], t[2];
 end
 
