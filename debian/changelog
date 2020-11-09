@@ -1,3 +1,15 @@
+ngcp-prosody-modules (9.2.0.0+0~mr9.2.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [181deaf] TT#92952 sipwise_pushd: fix mobile_push_silent_list query
+  * [4b1b193] TT#96550 mod_sipwise_redis_*: add some more debug info at add_host()
+  * [e7ecca6] TT#15822 mod_sipwise_pushd: fix error introduced back in 2017
+  * [addb5e5] TT#97400 sipwise_vhosts_sql: fix [de]activation of vhost via ngcp-panel
+  * [2cee084] TT#99900 remove utils/table.lua and use the one from lua-ngcp-kamailio
+  * [dde6a2f] TT#96550 mod_muc interface changed since 0.11.0
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Mon, 09 Nov 2020 16:26:34 +0100
+
 ngcp-prosody-modules (9.1.0.0+0~mr9.1.0.0) unstable; urgency=medium
 
   * New release.
