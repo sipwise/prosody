@@ -1,3 +1,14 @@
+ngcp-prosody-modules (8.5.4.0+0~mr8.5.4.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [f925127] TT#96550 mod_sipwise_redis_*: add some more debug info at add_host()
+  * [68eeb0a] TT#15822 mod_sipwise_pushd: fix error introduced back in 2017
+  * [f177a38] TT#97400 sipwise_vhosts_sql: fix [de]activation of vhost via ngcp-panel
+  * [25e99fc] TT#99900 remove utils/table.lua and use the one from lua-ngcp-kamailio
+  * [2d1a733] TT#96550 mod_muc interface changed since 0.11.0
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Thu, 14 Jan 2021 16:49:24 +0100
+
 ngcp-prosody-modules (8.5.3.0+0~mr8.5.3.0) unstable; urgency=medium
 
   [ Victor Seva ]
