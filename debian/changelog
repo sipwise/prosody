@@ -1,3 +1,10 @@
+ngcp-prosody-modules (9.5.1.2+0~mr9.5.1.2) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [c8b1f8b] TT#137602 vhost_sql: prepare host from sql
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 25 Aug 2021 15:58:05 +0200
+
 ngcp-prosody-modules (9.5.1.1+0~mr9.5.1.1) unstable; urgency=medium
 
   * New release.
