@@ -8,6 +8,7 @@
 module:set_global();
 
 local DBI = require "DBI"
+local nameprep = require "util.encodings".stringprep.nameprep;
 local hostmanager = require "core.hostmanager";
 local configmanager = require "core.configmanager";
 local ut = require "ngcp.utils";
@@ -139,7 +140,8 @@ local function load_vhosts_from_db()
 	local stmt, _ = getsql("SELECT `domain` FROM `domain`");
 	if stmt then
 		for row in stmt:rows(true) do
-			add_vhost(row.domain);
+			local host = nameprep(row.domain);
+			add_vhost(host);
 		end
 	end
 end
