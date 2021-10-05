@@ -1,3 +1,11 @@
+ngcp-prosody-modules (10.2.0.0+0~mr10.2.0.0) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [45c42ff] TT#137602 vhost_sql: prepare host from sql
+  * [a7e1cd5] TT#137602 auth_sql: lower domain for comparation
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 05 Oct 2021 13:20:47 +0200
+
 ngcp-prosody-modules (10.1.0.0+0~mr10.1.0.0) unstable; urgency=medium
 
   * New release.
