@@ -3,9 +3,9 @@ Section: net
 Priority: optional
 Maintainer: Sipwise Development Team <support@sipwise.com>
 Homepage: https://www.sipwise.com/
-Standards-Version: 3.9.8
+Standards-Version: 4.5.1
 Build-Depends:
- debhelper-compat (= 12),
+ debhelper-compat (= 13),
  quilt,
 
 Package: ngcp-prosody-modules
@@ -14,11 +14,11 @@ Depends:
  lua-bitop,
  lua-dbi-common,
  lua-dbi-mysql,
+ lua-ngcp-kamailio,
  lua-redis,
  lua-rex-pcre,
  lua-sec,
  lua5.2,
- lua-ngcp-kamailio,
  prosody (>= 0.11~),
  ${misc:Depends},
 Description: ngcp modules for the prosody Jabber/XMPP server
