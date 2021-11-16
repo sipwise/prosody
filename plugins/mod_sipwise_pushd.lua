@@ -101,19 +101,21 @@ end
 
 local function push_enable(username, domain)
 	reconect_check();
-	for row in engine:select(push_dom_query, domain) do
-		if row[2] == "1" then
-			module:log("debug", "domain mobile_push_enable pref set");
-			return true;
-		end
-	end
 	for row in engine:select(push_usr_query, username, domain) do
-		if row[2] == "1" then
-			module:log("debug", "usr mobile_push_enable pref set");
-			return true;
+		module:log("debug", "usr pref %s", ut.table.tostring(row))
+		if row[2] == "never" then
+			module:log("debug", "usr mobile_push_enable pref set to 'never'");
+			return false;
 		end
 	end
-	return false;
+	for row in engine:select(push_dom_query, domain) do
+		module:log("debug", "dom pref %s", ut.table.tostring(row))
+		if row[2] == "never" then
+			module:log("debug", "domain mobile_push_enable pref set to 'never'");
+			return false;
+		end
+	end
+	return true;
 end
 
 local function is_local_domain(dom)
