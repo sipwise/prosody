@@ -16,7 +16,7 @@ Depends:
  lua-dbi-mysql,
  lua-ngcp-kamailio,
  lua-redis,
- lua-rex-pcre,
+ lua-rex-pcre | lua-rex-pcre2,
  lua-sec,
  lua5.2,
  prosody (>= 0.11~),
