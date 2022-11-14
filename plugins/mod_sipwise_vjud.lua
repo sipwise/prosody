@@ -5,16 +5,19 @@
 -- COPYING file in the source package for more information.
 --
 module:depends("disco");
-
+local softreq = require "util.dependencies".softreq;
 local ut_jid = require "util.jid";
 local sql = require "util.sql";
 local st = require "util.stanza";
 local template = require "util.template";
-local rex = require "rex_pcre";
 local prosodyctl = require "util.prosodyctl"
 local dataforms_new = require "util.dataforms".new;
 local ut = require "ngcp.utils";
 local hosts = prosody.hosts;
+local rex = softreq "rex_pcre";
+if not rex then
+  rex = require "rex_pcre2";
+end
 
 local form_layout = dataforms_new{
   title= 'User Directory Search';
