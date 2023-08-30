@@ -1,3 +1,10 @@
+ngcp-prosody-modules (12.0.1.0+0~mr12.0.1.0) unstable; urgency=medium
+
+  [ Mykola Malkov ]
+  * [29dbb14] MT#57453 Switch docker image to bookworm
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 30 Aug 2023 18:05:32 +0200
+
 ngcp-prosody-modules (11.5.0.0+0~mr11.5.0.0) unstable; urgency=medium
 
   * New release.
