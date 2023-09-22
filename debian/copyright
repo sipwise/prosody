@@ -6,7 +6,7 @@ Upstream-Contact: Sipwise GmbH <development@sipwise.com>
 Files:
  *
 Copyright:
- 2013-2021 Sipwise GmbH, Austria
+ 2013-2023 Sipwise GmbH, Austria
 License: MIT
 
 Files:
@@ -14,7 +14,7 @@ Files:
 Copyright:
  2011 Tomasz Sterna <tomek@xiaoka.com>
  2011 Waqas Hussain <waqas20@gmail.com>
- 2013-2021 Sipwise GmbH, Austria
+ 2013-2023 Sipwise GmbH, Austria
 License: MIT
 
 Files:
@@ -22,7 +22,7 @@ Files:
 Copyright:
  2008-2010 Matthew Wild <mwild1@gmail.com>
  2008-2010 Waqas Hussain <waqas20@gmail.com>
- 2013-2021 Sipwise GmbH, Austria
+ 2013-2023 Sipwise GmbH, Austria
 License: MIT
 
 Files:
@@ -50,7 +50,7 @@ Files:
 Copyright:
  2008-2010 Matthew Wild <mwild1@gmail.com>
  2008-2010 Waqas Hussain <waqas20@gmail.com>
- 2015-2021 Sipwise GmbH, Austria
+ 2015-2023 Sipwise GmbH, Austria
 License: MIT
 
 Files:
