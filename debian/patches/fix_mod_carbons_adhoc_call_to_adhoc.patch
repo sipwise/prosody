@@ -1,0 +1,21 @@
+From: Sipwise Development Team <support@sipwise.com>
+Date: Wed, 11 Oct 2023 09:52:08 +0200
+Subject: fix_mod_carbons_adhoc_call_to_adhoc
+
+Change-Id: If2ce4cf8dff63c3a8491845d76f0b33b472dc8b6
+---
+ plugins/mod_carbons_adhoc/mod_carbons_adhoc.lua | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/plugins/mod_carbons_adhoc/mod_carbons_adhoc.lua b/plugins/mod_carbons_adhoc/mod_carbons_adhoc.lua
+index 406a0b0..e8af962 100644
+--- a/plugins/mod_carbons_adhoc/mod_carbons_adhoc.lua
++++ b/plugins/mod_carbons_adhoc/mod_carbons_adhoc.lua
+@@ -35,6 +35,6 @@ local function adhoc_status(self, data, state)
+ end
+ 
+ local status_desc = adhoc_new("Carbons: Get Status",
+-	"mod_carbons_adhoc#status", adhoc_status);
++	"mod_carbons_adhoc#status", adhoc_status, 'any');
+ 
+ module:add_item("adhoc", status_desc);
