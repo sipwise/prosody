@@ -1,3 +1,13 @@
+ngcp-prosody-modules (11.5.1.2+0~mr11.5.1.2) unstable; urgency=medium
+
+  [ Victor Seva ]
+  * [547fc51] MT#58471 refresh modules
+
+  [ Marco Capetta ]
+  * [3501d24] MT#58471 Fix mod_carbons_adhoc call to adhoc module
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Wed, 11 Oct 2023 10:15:47 +0200
+
 ngcp-prosody-modules (11.5.1.1+0~mr11.5.1.1) unstable; urgency=medium
 
   * New release.
