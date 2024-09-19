@@ -32,7 +32,7 @@ local muc_config = {
 };
 local pushd_config = {
 	url = "https://127.0.0.1:8080/push",
-	gcm = true,
+	fcm = true,
 	apns = true,
 	call_sound = 'incoming_call.caf',
 	msg_sound  = 'incoming_message.caf',
