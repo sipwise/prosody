@@ -1,3 +1,10 @@
+ngcp-prosody-modules (11.5.1.3+0~mr11.5.1.3) unstable; urgency=medium
+
+  [ Richard Fuchs ]
+  * [303306b] MT#53790 pushd: rename `gcm` to `fcm`
+
+ -- Sipwise Jenkins Builder <jenkins@sipwise.com>  Tue, 01 Oct 2024 16:35:20 +0200
+
 ngcp-prosody-modules (11.5.1.2+0~mr11.5.1.2) unstable; urgency=medium
 
   [ Victor Seva ]
