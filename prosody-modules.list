@@ -1,9 +1,0 @@
-mod_auth_sql
-mod_blocking
-mod_carbons_adhoc
-mod_carbons_copies
-mod_filter_chatstates
-mod_limit_auth
-mod_log_auth
-mod_smacks
-mod_throttle_presence
